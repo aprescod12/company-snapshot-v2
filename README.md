@@ -15,18 +15,18 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis are `NO-GO`; the A4.1 raw-discovery decomposition is pre-live ready but has not run.**
+**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis remain `NO-GO`; the one-request Exa A4.1 raw-discovery decomposition is `DISCOVERY SUFFICIENT`.**
 
 The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
 
-A4.1 now isolates whether that failure came from raw discovery or one-shot selection. Its separate diagnostic requests raw `auto` Search results plus highlights and renders candidates transiently without synthesizing a description or final three signals. The diagnostic is implemented and mocked locally, but no A4.1 Exa request has been made: cumulative Exa request count remains 1 and the runtime architecture remains intentionally **not frozen**.
+A4.1 isolated whether that failure came from raw discovery or one-shot selection. Exactly one separately authorized raw `auto` Search request returned 10 highlighted candidates. Manual review found three distinct, first-party, materially supported NVIDIA events, all within 90 days, so raw discovery was sufficient and A3's primary failure was downstream selection/ranking/synthesis. A4.1 request count is 1, cumulative Exa request count is 2, no retry occurred, and the runtime architecture remains intentionally **not frozen**.
 
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
 2. Exa `auto` Search with structured output and provider grounding — `NO-GO` at the NVIDIA A3 manual evidence gate; representative benchmark was not run.
-3. Exa raw `auto` Search plus highlights — A4.1 decomposition is pre-live only; live execution requires separate approval.
-4. If discovery decomposition does not justify a small next step, stop and reassess. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
+3. Exa raw `auto` Search plus highlights — `DISCOVERY SUFFICIENT` at A4.1; implementation of any selection/ranking layer and the representative benchmark require separate approval.
+4. Stop for project-owner review. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
 

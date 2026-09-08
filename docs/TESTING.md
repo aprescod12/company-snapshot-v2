@@ -317,7 +317,7 @@ Result: **`NO-GO`** for the tested Exa `auto + outputSchema + output.grounding` 
 
 No raw response, result set, grounding-link collection, source-page content, credential, or transient display artifact was persisted. No representative benchmark, alternate Exa mode, `deep-lite`, Tavily, Phase B, UI, or deployment work occurred.
 
-### Exa A4.1 — raw signal-discovery decomposition pre-live
+### Exa A4.1 — raw signal-discovery decomposition
 
 Pre-live implementation date: 2026-09-08
 
@@ -333,7 +333,7 @@ Pre-live implementation date: 2026-09-08
 | Date semantics | Provider `publishedDate` is estimated discovery metadata only; future manual source inspection must establish supported event dates |
 | Aggregate diagnostics | Endpoint, type, body-inclusive latency, result/date/highlight/domain counts, and provider-returned total cost only |
 | Safety | One fetch maximum, no retry/polling, minimized/redacted errors, no candidate console logging, no filesystem persistence |
-| Provider requests | A4.1: 0; cumulative Exa: 1 |
+| Provider requests | Before live execution: A4.1: 0; cumulative Exa: 1 |
 
 Future outcome definitions:
 
@@ -341,7 +341,26 @@ Future outcome definitions:
 - **`DISCOVERY INSUFFICIENT`** — inspectable raw results contain fewer than three qualifying distinct events within 180 days.
 - **`BLOCKED`** — request contract, credential/environment, network, or response shape prevents meaningful inspection.
 
-No raw candidate set or new source page has been observed. The A3 final-snapshot hypothesis remains `NO-GO`; `deep-lite` remains untested; no benchmark or production architecture is authorized.
+Live verification date: 2026-09-08
+
+| Measure | Observed result |
+| --- | --- |
+| Provider request | Exactly one raw `auto` Search request for NVIDIA; no retry or follow-up provider call |
+| Account path | Previously verified Free Tier account with available free credits, no payment method, and no paid billing/automatic top-up path |
+| Latency / returned cost | 4,065 ms / $0.007 total |
+| Aggregate raw set | 10 results; 8 dated results; 10 highlight-bearing results; 8 unique domains |
+| Manual inspection | All 10 cards inspected; 10 event-bearing candidates classified; exact returned destinations opened only as needed; no replacement-source search |
+| Qualifying events | 3 distinct events within 180 days |
+| Recency | 3 within `≤90d`; 0 within `91–180d` |
+| Qualifying ranks | 1: Hugging Face acquisition agreement — `FIRST_PARTY`, `SUPPORTED`; 3: IFA PAIR/RTX Spark launch — `FIRST_PARTY`, `SUPPORTED`; 4: MediaTek partnership/investment — `FIRST_PARTY`, `SUPPORTED` |
+| Duplicate clusters | Hugging Face acquisition at ranks 1/2/8; PAIR/RTX Spark at ranks 3/6; Q2/outlook overlap at ranks 9/10 did not qualify |
+| Other candidates | Rank 5 was a material first-party AWS item but inaccessible; ranks 7 and 9 were partial, weak-secondary/SEO-style repackaging; rank 10 was weak-secondary and inaccessible |
+| Inaccessible exact destinations | Ranks 2, 5, and 10 returned HTTP 403 during authorized direct retrieval |
+| Request totals | A4.1: 1; cumulative Exa: 2 |
+
+Result: **`DISCOVERY SUFFICIENT`**. Raw Exa `auto` discovery contained enough strong, recent evidence for NVIDIA; the A3 failure was primarily downstream signal selection/ranking/synthesis. The A3 final-snapshot hypothesis remains `NO-GO`. This result does not authorize or freeze a selection/ranking architecture.
+
+No raw response, full result set, highlight collection, source-page content, credential, or transient display artifact was persisted. `deep-lite`, another company, the representative benchmark, Tavily, Gemini, Groq, Phase B, UI, and deployment were not started.
 
 ## Phase B
 _Not yet run._
