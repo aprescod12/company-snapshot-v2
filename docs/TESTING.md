@@ -278,7 +278,7 @@ Result: **`NO-GO`** for the approved `gemini-2.5-flash` hypothesis. After the in
 
 Per the hard-stop rule, the ordinary cohort, edge cohort, manual source inspections, and repeatability checks were not run. No raw provider response, Grounded Result, Search Suggestions HTML, provider-returned link collection, citation URL, or temporary display artifact was created or persisted. Exa and all later-phase work were not started.
 
-### Exa A3 — NVIDIA smoke preflight and architecture correction
+### Exa A3 — NVIDIA smoke preflight, architecture correction, and live result
 
 Preflight/correction date: 2026-09-08
 
@@ -291,13 +291,31 @@ Preflight/correction date: 2026-09-08
 | URL integrity | Displayed links must be exact HTTP(S) URLs from relevant `output.grounding` citations; no result-set equality assumption, normalization, rewriting, or substitution |
 | Free public offering | Starter: free; $20 signup + $10 monthly credits; no payment method required; all endpoints; 10 Search QPS |
 | Selected-mode list price | $0.007 per request for up to 10 results, deducted from available credits on the API-key path |
-| Actual-account gate | Not reached; explicit confirmation or authenticated dashboard verification is required before the authorized request |
-| Credential state | Project owner reports the key now exists in ignored `.env`; it was not read, loaded, or used during this correction |
-| Local verification | Native Node syntax and focused mocked tests passed; no provider request made |
+| Actual-account gate | Project owner verified Free Tier, 10 Search QPS, $20 available balance, no payment method, and no configured paid billing/automatic top-up path before the live request |
+| Credential state | Key remained in ignored/untracked `.env`, was loaded only into the isolated smoke command process, and was never printed, persisted, staged, or committed |
+| Local verification | Native Node syntax and focused mocked tests passed before the live request |
 
 Pre-live review changed the untested first hypothesis from `deep-lite` to `auto`, removed source URLs from the synthesized schema, and made `output.grounding` the only displayed-link source. `contents.highlights` remains omitted because `output.content` plus `output.grounding` already supplies what this bounded smoke needs; avoiding optional content retrieval keeps the experiment smaller without relying on unnecessary content behavior. `deep-lite` remains untested and can be considered only under separate authorization after a material `auto` failure. Source support and true event distinctness remain manual inspection gates after a successful request.
 
-Live outcome: **not run; zero Exa provider requests made.** Account free-path behavior, NVIDIA identity/domain, description, signals, source set, grounding integrity, manual source support, and provider latency remain untested. No representative benchmark has occurred.
+Live verification date: 2026-09-08
+
+| Measure | Observed result |
+| --- | --- |
+| Provider request | Exactly one `auto` Search request for `NVIDIA`; no retry or follow-up provider call |
+| Free-path/account behavior | Request worked against the project-owner-verified Free Tier account without a payment method or paid billing/automatic top-up path |
+| Latency / returned cost | 4,732 ms / $0.007 total |
+| Results / grounding | 10 provider results; 12 grounding entries; 7 distinct grounding sources; 3 signal source mappings; grounding integrity passed |
+| Identity / domain | `NVIDIA Corporation` / `nvidia.com`; correct |
+| Description | Accurate, directly displayable, two sentences; passed |
+| Signal 1 | 2026-06-12 (88 days): TensorRT-LLM stale AutoDeploy fallback-test removal — `SUPPORTED` by a first-party repository page, but too minor to be a useful company-level signal |
+| Signal 2 | 2026-01-12 (239 days): DLSS 4.5 Super Resolution update — `SUPPORTED`, explicitly labeled `Older fallback`, but outside 180 days and backed by a weak secondary source |
+| Signal 3 | 2026-09-08 (0 days): reported Hugging Face acquisition discussions — `INACCESSIBLE` and not materially supported; the generic Yahoo Finance homepage destination returned a rate-limit response, its displayed title described a company profile, and the event date was not defensible; the summary's `Older fallback` label contradicted its same-day date |
+| Distinctness | Three different underlying topics; no duplicate-event failure |
+| Manual gate | Failed: fewer than three useful, recent, materially supported signals |
+
+Result: **`NO-GO`** for the tested Exa `auto + outputSchema + output.grounding` hypothesis. The free account path and provider contract worked, but the successful response did not meet the product's evidence-quality bar. The deterministic grounding check proved field mapping and URL integrity only; manual inspection correctly caught assessment-trivial evidence, stale/weak evidence, and an inaccessible generic destination that did not substantiate the displayed claim.
+
+No raw response, result set, grounding-link collection, source-page content, credential, or transient display artifact was persisted. No representative benchmark, alternate Exa mode, `deep-lite`, Tavily, Phase B, UI, or deployment work occurred.
 
 ## Phase B
 _Not yet run._

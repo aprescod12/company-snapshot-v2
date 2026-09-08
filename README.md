@@ -15,14 +15,14 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Gemini A1 is `NO-GO`; the corrected Exa A3 smoke is authorized but has not run.**
+**Gemini A1 and the tested Exa A3 `auto` hypothesis are `NO-GO`.**
 
-The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The project owner then authorized one bounded Exa NVIDIA smoke. Pre-live review corrected its dependency-free request contract to Exa's recommended `auto + outputSchema + output.grounding` path. The project owner reports that `EXA_API_KEY` now exists in the ignored local `.env`; it was not loaded or used during the correction. Zero Exa requests have been made, actual-account free-path behavior remains untested, and the runtime architecture remains intentionally **not frozen**.
+The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` hypothesis is therefore `NO-GO`, and the runtime architecture remains intentionally **not frozen**.
 
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
-2. Exa `auto` Search with structured output and provider grounding — one NVIDIA A3 smoke is authorized; representative benchmark is not authorized.
+2. Exa `auto` Search with structured output and provider grounding — `NO-GO` at the NVIDIA A3 manual evidence gate; representative benchmark was not run.
 3. If both fail, stop and reassess. Tavily and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.

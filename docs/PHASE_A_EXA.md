@@ -13,7 +13,7 @@ company input
 → transient manual review
 ```
 
-Exa Plan B and one bounded NVIDIA smoke are authorized. The pre-live architecture correction is complete, but the first Exa smoke has not occurred: provider request count remains **0**. The project owner reports that `EXA_API_KEY` now exists in the repository-local ignored `.env`; this correction did not read, load, print, inspect, or use it. Actual-account free-path behavior therefore remains untested. The representative benchmark is not authorized, and no runtime architecture is frozen.
+The one authorized NVIDIA smoke ran on 2026-09-08 from the reviewed `main` baseline. Exactly **1** Exa provider request was made, with no retry. The actual Free Tier account path worked without a payment method or paid billing path, and Exa returned structured content plus grounding, but manual review found that the result did not contain three useful, materially supported signals. The tested `auto + outputSchema + output.grounding` hypothesis is therefore **`NO-GO`**. The representative benchmark is not authorized, and no runtime architecture is frozen.
 
 ## Official contract and free-path findings
 
@@ -39,7 +39,7 @@ Sources:
 - https://exa.ai/docs/reference/openapi-spec
 - https://exa.ai/docs/exa-spec.json
 
-The OpenAPI specification is the response-schema authority. No authenticated dashboard or provider call was used during this correction.
+The OpenAPI specification is the response-schema authority. No authenticated dashboard or provider call was used during the pre-live correction; the project owner subsequently verified the actual account in the authenticated dashboard before authorizing the live smoke.
 
 ## Mode and contents decisions
 
@@ -75,12 +75,21 @@ Grounding supports an indexed signal when the provider grounds the signal object
 
 The focused mocked checks cover pre-request authorization, one-call/no-retry behavior, `auto` request shape, schema exclusions, body-inclusive latency, minimized/redacted errors, strict output shape, identity/domain, sentence and signal counts, date/older-fallback handling, duplicate-title rejection, required grounding, malformed/unsupported grounding URLs, grounding-derived display links, aggregate-only logging, absence of seeded NVIDIA facts, and absence of a filesystem persistence path.
 
-No Exa request was made by these offline checks.
+No Exa request was made by these offline checks. The later live smoke used the same reviewed diagnostic and consumed the sole authorized request.
 
 ## Live/manual record
 
-The previous credential preflight stopped before a request. Since then, the project owner reports that a replacement/current `EXA_API_KEY` exists in ignored local `.env`; this task deliberately did not access it. Exa request count remains zero.
+Verification date: 2026-09-08
 
-Endpoint/mode access, actual-account behavior, provider latency, NVIDIA identity/domain, description quality, signal count/recency/distinctness, grounding/source counts, manual source support, and blocked-source behavior have not been evaluated. No raw provider response, result set, grounding-link collection, or temporary display artifact was created or persisted.
+- The project owner verified the authenticated account as Free Tier with a $20 balance, 10 Search QPS, no payment method, and no configured paid billing or automatic top-up path.
+- Exactly one `auto` Search request was made for `NVIDIA`; there was no retry, second company, alternate mode, or follow-up provider call.
+- The request completed in 4,732 ms and returned 10 provider results, 12 grounding entries, 7 distinct grounding sources, and a returned total cost of $0.007 against the available free balance.
+- Deterministic gates passed: `NVIDIA Corporation`, `nvidia.com`, an accurate two-sentence description, exactly three dated signals, three signal source mappings, and valid field-level grounding shape/URL integrity.
+- Signal 1, **TensorRT-LLM stale AutoDeploy fallback-test removal** (2026-06-12; 88 days old), was `SUPPORTED` by the first-party repository page and had a defensible date. It was nevertheless too minor to qualify as a useful company-level signal for the assessment.
+- Signal 2, **DLSS 4.5 Super Resolution update** (2026-01-12; 239 days old), was `SUPPORTED` by the displayed secondary article and explicitly labeled `Older fallback`. The evidence was substantially outside the 180-day window and came from a weak secondary source rather than a first-party or high-quality independent source.
+- Signal 3, **reported Hugging Face acquisition discussions** (2026-09-08; 0 days old), was `INACCESSIBLE` and not materially supported: the displayed destination was a generic Yahoo Finance homepage that returned a rate-limit response, while its displayed source title described a company profile rather than the claimed event. The event date was not defensible from that evidence. The summary also incorrectly carried an `Older fallback` label despite its same-day date.
+- The three topics were different underlying events, so no duplicate-event failure was observed. The failure was usefulness, recency/source quality, and material source support—not syntactic grounding integrity.
 
-Exit status: **`BLOCKED` pending human review/push before the already-authorized NVIDIA smoke can run in a separate execution task**. Representative benchmarking, Tavily, Phase B, production UI, and deployment have not started.
+Exit status: **`NO-GO`** for the tested Exa `auto + outputSchema + output.grounding` hypothesis. A successful response could not produce three useful, materially supported recent company signals. No raw response, provider result set, grounding-link collection, source-page content, credential, or temporary display artifact was persisted.
+
+The representative benchmark, `deep-lite`, Tavily, Phase B, production UI, and deployment have not started and remain unauthorized.

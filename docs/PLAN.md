@@ -2,9 +2,9 @@
 
 ## Status
 
-**Gemini A1 is `NO-GO`. The corrected Exa A3 NVIDIA smoke is authorized but has not run. Zero Exa requests have been made, actual-account free-path behavior is untested, and no runtime architecture is frozen.**
+**Gemini A1 and the tested Exa A3 `auto` hypothesis are `NO-GO`. Exactly one Exa NVIDIA request was made on the verified Free Tier path; the response passed structural gates but failed manual signal usefulness/support gates. No representative benchmark is authorized, and no runtime architecture is frozen.**
 
-This document records the current approved V2 product and technical decisions. On 2026-09-08, the single authorized NVIDIA A1 request reached the Gemini Interactions API from the replacement AI Studio project shown as Free Tier with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, reporting that the model is no longer available to new users, before Search or model output occurred. That fails the approved model-availability hard gate. A2 was not run, and testing a different Gemini model is a different hypothesis requiring explicit approval. Architecture becomes frozen only after a provider passes Phase A and the project owner approves the evidence.
+This document records the current approved V2 product and technical decisions. On 2026-09-08, the single authorized NVIDIA A1 request reached the Gemini Interactions API from the replacement AI Studio project shown as Free Tier with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, reporting that the model is no longer available to new users, before Search or model output occurred. Later that day, the single authorized Exa A3 NVIDIA request reached Search through the account's verified Free Tier path and returned structurally valid grounded output, but manual inspection found fewer than three useful, materially supported recent company signals. A2 and the Exa representative benchmark were not run. Any different model, mode, provider, benchmark, or production work requires explicit approval. Architecture becomes frozen only after a provider passes Phase A and the project owner approves the evidence.
 
 ## Source-of-truth hierarchy
 
@@ -139,7 +139,7 @@ The Phase A diagnostic uses one synchronous, non-background `POST` to the recomm
 
 ## Plan B hypothesis — Exa
 
-Gemini materially failed its model-access smoke and the project owner authorized one bounded Exa A3 NVIDIA smoke. This authorization does not include the representative benchmark. The project owner reports that `EXA_API_KEY` now exists in the ignored repository-local `.env`; the pre-live correction did not read, load, or use it, so the actual account's free path remains untested.
+Gemini materially failed its model-access smoke, after which the project owner authorized one bounded Exa A3 NVIDIA smoke. The project owner verified the actual Exa account as Free Tier with available credits, no payment method, and no paid billing or automatic top-up path. The one authorized request has now been consumed; the representative benchmark was not authorized.
 
 Preferred shape:
 
@@ -172,6 +172,8 @@ Official/current references, verified 2026-09-08:
 Current public pricing documents describe Starter as free, with $20 signup credits, $10 monthly credits, no payment method required, access to all endpoints, and 10 Search QPS. Public documentation does not establish the actual state of a particular key's account. Before the sole live request, the project owner or an authenticated dashboard inspection must attest that the key belongs to Starter with no payment method, paid usage, or auto-recharge enabled.
 
 **Hard rule:** Exa is only eligible if the actual account can perform the required production workflow with no paid key, no payment requirement for the tested path, and enough free quota for benchmark + review usage.
+
+**2026-09-08 A3 outcome:** `NO-GO` for the tested `auto` hypothesis. Exactly one NVIDIA request completed on the verified Free Tier path in 4,732 ms and returned 10 results, 12 grounding entries, 7 distinct grounding sources, and $0.007 total cost. Identity/domain, the accurate two-sentence description, signal count, and grounding integrity passed deterministic checks. Manual review found one supported but assessment-trivial repository-test change, one supported but 239-day-old update from a weak secondary source, and one acquisition-discussion claim whose generic Yahoo Finance homepage destination was inaccessible and did not materially support or date the event. The three topics were distinct, but the snapshot did not contain three useful, recent, materially supported signals. No retry, benchmark, alternate Exa mode, or later provider work occurred.
 
 ## Reserve only — Tavily
 
@@ -281,7 +283,7 @@ Only if A1 passes, run the approved representative benchmark in `docs/TESTING.md
 If Gemini passes the benchmark and the bounded repeatability sanity check, record a `GO` recommendation and stop provider evaluation. Do not freeze the retrieval architecture until the project owner reviews and approves the Phase A evidence.
 
 ### A3 — Exa smoke
-Authorized after Gemini's material failure. Current official Exa contract/pricing research and the corrected dependency-free `auto + outputSchema + output.grounding` diagnostic are complete. The first Exa smoke has not occurred, and zero Exa provider requests have been made. The project owner reports that `EXA_API_KEY` now exists in ignored `.env`; it was not read, loaded, or used during the pre-live correction. The authorized smoke still requires a specific-account Free Starter/no-payment attestation. `deep-lite` was never tested and is not an automatic fallback. Do not run the representative benchmark without separate authorization.
+Authorized after Gemini's material failure and completed on 2026-09-08. The project owner first verified the actual account as Free Tier with no payment method or paid billing/automatic top-up path. Exactly one NVIDIA request used the corrected dependency-free `auto + outputSchema + output.grounding` diagnostic. The request completed successfully and passed structural gates, but manual review failed the required usefulness, recency/source-quality, and material-support gates; the tested hypothesis is `NO-GO`. `deep-lite` was never tested and is not an automatic fallback. Do not run the representative benchmark or any other provider/mode without separate authorization.
 
 ### A4 — Stop and reassess
 If both fail, do **not** automatically test Tavily, Groq, Brave, RSS, or another provider. Stop and obtain a new approved decision.
