@@ -2,7 +2,7 @@
 
 ## Status
 
-**Gemini A1 is `NO-GO` for the approved `gemini-2.5-flash` hypothesis. No runtime architecture is frozen.**
+**Gemini A1 is `NO-GO`. The corrected Exa A3 NVIDIA smoke is authorized but has not run. Zero Exa requests have been made, actual-account free-path behavior is untested, and no runtime architecture is frozen.**
 
 This document records the current approved V2 product and technical decisions. On 2026-09-08, the single authorized NVIDIA A1 request reached the Gemini Interactions API from the replacement AI Studio project shown as Free Tier with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, reporting that the model is no longer available to new users, before Search or model output occurred. That fails the approved model-availability hard gate. A2 was not run, and testing a different Gemini model is a different hypothesis requiring explicit approval. Architecture becomes frozen only after a provider passes Phase A and the project owner approves the evidence.
 
@@ -139,24 +139,37 @@ The Phase A diagnostic uses one synchronous, non-background `POST` to the recomm
 
 ## Plan B hypothesis — Exa
 
-If Gemini materially fails the smoke test or benchmark, stop. Test **one** Exa-based approach only after the project owner explicitly authorizes it.
+Gemini materially failed its model-access smoke and the project owner authorized one bounded Exa A3 NVIDIA smoke. This authorization does not include the representative benchmark. The project owner reports that `EXA_API_KEY` now exists in the ignored repository-local `.env`; the pre-live correction did not read, load, or use it, so the actual account's free path remains untested.
 
 Preferred shape:
 
 ```text
 company input
-→ Exa live web/deep search
-→ structured sourced result
+→ one Exa Search request using auto
+→ structured output plus provider grounding
 → minimal application checks
 → snapshot
 ```
 
-Exa is attractive because current product documentation describes real-time web search, readable content retrieval, deeper search, structured output, and field-level grounding/citations.
+The selected A3 hypothesis is one native `POST https://api.exa.ai/search` request using `type: "auto"`, 10 results, a strict object `outputSchema`, provider-returned `output.grounding`, and no requested page contents. Current official guidance identifies `auto` as the recommended balanced default and confirms that `outputSchema` synthesis applies to every Search type. `deep-lite` was never called or empirically rejected; it is only a possible later, separately authorized fallback if `auto` materially fails, never an automatic fallback.
 
-Official/current references:
-- https://exa.ai/
-- https://exa.ai/blog/exa-deep
-- Exa pricing/account terms must be re-verified immediately before the smoke test.
+The `outputSchema` contains only `resolvedCompanyName`, `officialDomain`, `description`, and three signal objects with `title`, `date`, and `summary`; it contains no URL, citation, or confidence fields. Exact source destinations come only from Exa's field-level `output.grounding`. Each grounding entry and citation must match the documented response shape, and every displayed grounding URL must be valid HTTP(S), preserved byte-for-byte, and associated with the relevant scalar claim or indexed signal. Official material does not guarantee equality between grounding citation URLs and `results[].url`, so the diagnostic does not invent that contract. The local diagnostic also enforces the NVIDIA identity/domain, a 2–3 sentence description, exactly three signals, date formatting/older-fallback labeling, and basic duplicate-title rejection. Source support, source quality, and underlying-event distinctness remain manual gates.
+
+The provider-facing schema uses only the minimal documented structural vocabulary needed here and omits `additionalProperties`, `minItems`, and `maxItems` as a risk-minimization choice, not because Exa is known to reject those JSON Schema keywords. Exact top-level keys, exact signal keys, and exactly three signals remain deterministic application-side gates.
+
+The generated setup selected `contents.highlights`, but the bounded smoke omits it because `output.content` plus `output.grounding` already supplies the structured claims and evidence links needed for this one-call manual inspection. Omitting optional content retrieval keeps the first hypothesis smaller and avoids depending on content behavior the experiment does not need. No text, summary, livecrawl forcing, or other content mode is requested.
+
+Official/current references, verified 2026-09-08:
+- https://exa.ai/pricing?tab=api
+- https://exa.ai/docs/reference/billing
+- https://exa.ai/docs/reference/search
+- https://exa.ai/docs/reference/search-api-guide-for-coding-agents
+- https://exa.ai/docs/reference/pricing
+- https://exa.ai/docs/reference/rate-limits
+- https://exa.ai/docs/reference/openapi-spec
+- https://exa.ai/docs/exa-spec.json
+
+Current public pricing documents describe Starter as free, with $20 signup credits, $10 monthly credits, no payment method required, access to all endpoints, and 10 Search QPS. Public documentation does not establish the actual state of a particular key's account. Before the sole live request, the project owner or an authenticated dashboard inspection must attest that the key belongs to Starter with no payment method, paid usage, or auto-recharge enabled.
 
 **Hard rule:** Exa is only eligible if the actual account can perform the required production workflow with no paid key, no payment requirement for the tested path, and enough free quota for benchmark + review usage.
 
@@ -267,12 +280,8 @@ Only if A1 passes, run the approved representative benchmark in `docs/TESTING.md
 
 If Gemini passes the benchmark and the bounded repeatability sanity check, record a `GO` recommendation and stop provider evaluation. Do not freeze the retrieval architecture until the project owner reviews and approves the Phase A evidence.
 
-### A3 — Exa smoke + benchmark
-Only if Gemini fails materially **and** the project owner explicitly authorizes this later experiment.
-
-First verify free/no-paid feasibility with the actual Exa account. If that passes, run the same representative benchmark.
-
-If Exa passes, freeze it.
+### A3 — Exa smoke
+Authorized after Gemini's material failure. Current official Exa contract/pricing research and the corrected dependency-free `auto + outputSchema + output.grounding` diagnostic are complete. The first Exa smoke has not occurred, and zero Exa provider requests have been made. The project owner reports that `EXA_API_KEY` now exists in ignored `.env`; it was not read, loaded, or used during the pre-live correction. The authorized smoke still requires a specific-account Free Starter/no-payment attestation. `deep-lite` was never tested and is not an automatic fallback. Do not run the representative benchmark without separate authorization.
 
 ### A4 — Stop and reassess
 If both fail, do **not** automatically test Tavily, Groq, Brave, RSS, or another provider. Stop and obtain a new approved decision.

@@ -278,6 +278,27 @@ Result: **`NO-GO`** for the approved `gemini-2.5-flash` hypothesis. After the in
 
 Per the hard-stop rule, the ordinary cohort, edge cohort, manual source inspections, and repeatability checks were not run. No raw provider response, Grounded Result, Search Suggestions HTML, provider-returned link collection, citation URL, or temporary display artifact was created or persisted. Exa and all later-phase work were not started.
 
+### Exa A3 — NVIDIA smoke preflight and architecture correction
+
+Preflight/correction date: 2026-09-08
+
+| Measure | Verified pre-request state |
+| --- | --- |
+| Endpoint / auth | `POST https://api.exa.ai/search`; `x-api-key` header (Bearer is also documented) |
+| Selected mode | `auto`, Exa's recommended balanced default; `outputSchema` is documented for every Search type |
+| Request shape | One non-streamed request, 10 results, minimal object `outputSchema`, strict application-side shape/count checks, `output.grounding`, no separate contents or second model |
+| Structured response | `output.content` holds identity/domain/description/signals only; `output.grounding` holds field-level citations and confidence metadata |
+| URL integrity | Displayed links must be exact HTTP(S) URLs from relevant `output.grounding` citations; no result-set equality assumption, normalization, rewriting, or substitution |
+| Free public offering | Starter: free; $20 signup + $10 monthly credits; no payment method required; all endpoints; 10 Search QPS |
+| Selected-mode list price | $0.007 per request for up to 10 results, deducted from available credits on the API-key path |
+| Actual-account gate | Not reached; explicit confirmation or authenticated dashboard verification is required before the authorized request |
+| Credential state | Project owner reports the key now exists in ignored `.env`; it was not read, loaded, or used during this correction |
+| Local verification | Native Node syntax and focused mocked tests passed; no provider request made |
+
+Pre-live review changed the untested first hypothesis from `deep-lite` to `auto`, removed source URLs from the synthesized schema, and made `output.grounding` the only displayed-link source. `contents.highlights` remains omitted because `output.content` plus `output.grounding` already supplies what this bounded smoke needs; avoiding optional content retrieval keeps the experiment smaller without relying on unnecessary content behavior. `deep-lite` remains untested and can be considered only under separate authorization after a material `auto` failure. Source support and true event distinctness remain manual inspection gates after a successful request.
+
+Live outcome: **not run; zero Exa provider requests made.** Account free-path behavior, NVIDIA identity/domain, description, signals, source set, grounding integrity, manual source support, and provider latency remain untested. No representative benchmark has occurred.
+
 ## Phase B
 _Not yet run._
 

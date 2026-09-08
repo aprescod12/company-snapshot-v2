@@ -15,14 +15,14 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Phase A is `BLOCKED` at pre-live-test review.**
+**Gemini A1 is `NO-GO`; the corrected Exa A3 smoke is authorized but has not run.**
 
-The bounded, dependency-free Gemini diagnostic is implemented. Its initial credential preflight failed closed on 2026-09-07, so no provider request was made. The later exposed credential was never used and has now been revoked/rotated and replaced; the replacement AI Studio project is shown as Free Tier with billing not set up, and its local key has not been used. Phase A remains blocked pending human approval of the corrected local commit, push approval, and a separately authorized NVIDIA A1 smoke test. The runtime architecture remains intentionally **not frozen**.
+The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The project owner then authorized one bounded Exa NVIDIA smoke. Pre-live review corrected its dependency-free request contract to Exa's recommended `auto + outputSchema + output.grounding` path. The project owner reports that `EXA_API_KEY` now exists in the ignored local `.env`; it was not loaded or used during the correction. Zero Exa requests have been made, actual-account free-path behavior remains untested, and the runtime architecture remains intentionally **not frozen**.
 
 Current provider decision sequence:
 
-1. Gemini 2.5 Flash + Google Search grounding — smoke test and benchmark.
-2. If Gemini materially fails and the project owner explicitly authorizes it, Exa — one bounded smoke test and the same benchmark.
+1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
+2. Exa `auto` Search with structured output and provider grounding — one NVIDIA A3 smoke is authorized; representative benchmark is not authorized.
 3. If both fail, stop and reassess. Tavily and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
@@ -54,13 +54,14 @@ This is a clean V2 repository. V1 remains separate as historical research, empir
 
 ## Setup
 
-There is no production application setup yet. The Phase A diagnostic requires Node.js 22 and a `GEMINI_API_KEY` supplied through the environment; never commit the value or a `.env` file. The operator must independently verify that the key's project has no active billing account before passing the required confirmation flag.
+There is no production application setup yet. The Phase A diagnostics require Node.js 22 and provider keys supplied through the environment; never commit a value or a `.env` file. The current Exa smoke requires the operator to independently confirm the key belongs to a Starter account with no payment method, paid usage, or auto-recharge before passing the confirmation flag.
 
 ```bash
 node scripts/gemini-phase-a.mjs smoke --company NVIDIA --confirmed-unbilled
+node scripts/exa-phase-a.mjs smoke --company NVIDIA --confirmed-free-starter
 ```
 
-The diagnostic makes at most one synchronous, non-background Interactions API request with `store: false`, does not poll, and serves returned Google material only from memory on localhost for manual inspection. It does not locally persist Grounded Results, Search Suggestions, or provider-returned links. Benchmark/repeat modes remain explicitly gated on prior-phase results; separate provider-side grounding retention remains subject to Google's terms.
+Each diagnostic makes at most one request and has no automatic retry or polling path. The Exa diagnostic uses one non-streamed `auto` Search call, requires provider-returned field-level grounding for the displayed claims, and serves only exact HTTP(S) grounding links in an in-memory localhost view. It omits optional highlights because structured output plus grounding already supplies the bounded smoke's required evidence mapping, keeping the first hypothesis smaller and independent of content behavior it does not need. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one. The representative benchmark remains separately gated.
 
 ## Submission targets
 
