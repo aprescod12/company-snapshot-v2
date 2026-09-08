@@ -2,9 +2,9 @@
 
 ## Scope and current status
 
-Phase A4.1 isolates the unresolved cause of the A3 signal-quality failure:
+Phase A4.1 tests a bounded strategy related to the unresolved A3 signal-quality failure:
 
-> Were strong recent NVIDIA events absent from Exa's raw Search results, or were they present but omitted by one-shot synthesis?
+> Can a dedicated signal-oriented raw-discovery query retrieve enough strong recent NVIDIA events to support a decomposed discovery → selection direction?
 
 The bounded diagnostic was executed exactly once against Exa on 2026-09-08 after the reviewed baseline and local checks passed. A4.1 provider-request count is **1**, cumulative Exa provider-request count is **2**, and the outcome is **`DISCOVERY SUFFICIENT`**. The prior A3 `auto + outputSchema + output.grounding` final-snapshot result remains **`NO-GO`**, and no production architecture is frozen.
 
@@ -111,7 +111,7 @@ The observed outcome is:
 
 **`DISCOVERY SUFFICIENT`** — the raw set contains three distinct, useful, first-party, materially supported NVIDIA events, all within 90 days: the Hugging Face acquisition agreement, the IFA local-AI/PAIR and RTX Spark launch, and the expanded MediaTek partnership/investment.
 
-Interpretation: raw Exa `auto` discovery retrieved enough strong recent events for the easy NVIDIA case. The A3 failure was primarily downstream selection/ranking/synthesis, not absence of viable raw candidates. This finding does not authorize or freeze a ranking architecture. `deep-lite` remains untested and is not an automatic fallback.
+Interpretation: A4.1 demonstrated that a dedicated signal-oriented raw-discovery query can retrieve enough strong recent candidates for NVIDIA, supporting a decomposed discovery → selection direction. Because the A4.1 query differed from A3's final-snapshot query, the experiment does not isolate whether A3 failed solely in downstream selection versus retrieval-query formulation. This finding does not authorize or freeze a ranking architecture. `deep-lite` remains untested and is not an automatic fallback.
 
 ## Pre-live verification
 

@@ -358,7 +358,7 @@ Live verification date: 2026-09-08
 | Inaccessible exact destinations | Ranks 2, 5, and 10 returned HTTP 403 during authorized direct retrieval |
 | Request totals | A4.1: 1; cumulative Exa: 2 |
 
-Result: **`DISCOVERY SUFFICIENT`**. Raw Exa `auto` discovery contained enough strong, recent evidence for NVIDIA; the A3 failure was primarily downstream signal selection/ranking/synthesis. The A3 final-snapshot hypothesis remains `NO-GO`. This result does not authorize or freeze a selection/ranking architecture.
+Result: **`DISCOVERY SUFFICIENT`**. A4.1 demonstrated that a dedicated signal-oriented raw-discovery query can retrieve enough strong recent candidates for NVIDIA, supporting a decomposed discovery → selection direction. Because the A4.1 query differed from A3's final-snapshot query, the experiment does not isolate whether A3 failed solely in downstream selection versus retrieval-query formulation. The A3 final-snapshot hypothesis remains `NO-GO`. This result does not authorize or freeze a selection/ranking architecture.
 
 No raw response, full result set, highlight collection, source-page content, credential, or transient display artifact was persisted. `deep-lite`, another company, the representative benchmark, Tavily, Gemini, Groq, Phase B, UI, and deployment were not started.
 
