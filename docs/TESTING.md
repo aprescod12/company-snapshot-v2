@@ -362,6 +362,29 @@ Result: **`DISCOVERY SUFFICIENT`**. A4.1 demonstrated that a dedicated signal-or
 
 No raw response, full result set, highlight collection, source-page content, credential, or transient display artifact was persisted. `deep-lite`, another company, the representative benchmark, Tavily, Gemini, Groq, Phase B, UI, and deployment were not started.
 
+### Exa A4.2 — lightweight signal selector pre-live
+
+Implementation date: 2026-09-08
+
+| Measure | Verified pre-live state |
+| --- | --- |
+| Input/output | Generic raw-candidate input; at most three selected candidates plus per-input deterministic diagnostics |
+| Structural validity | Rejects only invalid positive-integer rank, empty title, or non-exact/non-HTTP(S) URL |
+| Recency | `RECENT` ≤90d; `FALLBACK` 91–180d; `UNKNOWN` absent/malformed/future; `OLD` >180d; unknown/old remain eligible |
+| Provenance | Parsed hostname equals official domain or is a true subdomain → `FIRST_PARTY`; all else → `OTHER` |
+| Duplicate title rule | After simple plural and silent-e past-tense normalization, ≥3 shared distinctive tokens, overlap coefficient ≥0.72, and Jaccard ≥0.70; short near-identical title rule is separately bounded |
+| Sparse-title fallback | Only opaque/metadata-like titles may add the first 48 highlight tokens; requires ≥4 shared tokens, overlap ≥0.68, and Jaccard ≥0.32 |
+| Cluster representative | Same lexicographic preference as selection: recency, first-party status, original Exa rank |
+| Selection | First three unique representatives; returns fewer honestly if fewer remain |
+| Determinism/safety | Stable tie-breaking, copied candidate/highlight values, no mutation, provider/network/filesystem/persistence path, or company-specific logic |
+| Toolchain | No `package.json`, TypeScript configuration, or `npm run typecheck`; native Node ESM/JSDoc used without a new dependency |
+| Provider activity | A4.2 Exa requests: 0; cumulative Exa requests: 2; no live candidate set or source page observed |
+| Local verification | Selector/test syntax checks passed; focused selector tests 23/23; full suite 64/64; `git diff --check` passed |
+
+Focused synthetic tests cover exact recency boundaries, malformed/future dates, unknown-date eligibility, root/subdomain/deceptive-domain behavior, obvious, morphological, and metadata-title duplicates, same-template headlines with different counterpart organizations or locations, distinct related events, generic-language safety, representative selection, ordering, exact/insufficient counts, diagnostics, stability, immutability, and static absence of provider/network/persistence/company-specific selector logic.
+
+Result: **`A4.2 PRE-LIVE READY`**. This is local selector viability only. NVIDIA behavior, source support, factual event dates, live variability, and representative-company coverage remain untested. No source verification, synthesis, `deep-lite`, benchmark, Tavily, Phase B, UI, or deployment work occurred.
+
 ## Phase B
 _Not yet run._
 

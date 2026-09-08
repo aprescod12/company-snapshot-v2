@@ -15,18 +15,21 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis remain `NO-GO`; the one-request Exa A4.1 raw-discovery decomposition is `DISCOVERY SUFFICIENT`.**
+**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis remain `NO-GO`; A4.1 raw discovery is `DISCOVERY SUFFICIENT`, and the A4.2 lightweight selector is pre-live ready.**
 
 The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
 
 Exactly one separately authorized raw `auto` Search request returned 10 highlighted candidates. Manual review found three distinct, first-party, materially supported NVIDIA events, all within 90 days. A4.1 demonstrated that a dedicated signal-oriented raw-discovery query can retrieve enough strong recent candidates for NVIDIA, supporting a decomposed discovery → selection direction. Because the A4.1 query differed from A3's final-snapshot query, the experiment does not isolate whether A3 failed solely in downstream selection versus retrieval-query formulation. A4.1 request count is 1, cumulative Exa request count is 2, no retry occurred, and the runtime architecture remains intentionally **not frozen**.
 
+A4.2 now provides a generic dependency-free selector for already-retrieved candidates. It buckets provider dates, classifies only first-party versus other domains, conservatively collapses obvious lexical duplicates, preserves Exa rank after recency/provenance preferences, and returns at most three candidates with deterministic diagnostics. This implementation has only synthetic local coverage: it made no provider or source-page request, and its NVIDIA behavior remains untested.
+
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
 2. Exa `auto` Search with structured output and provider grounding — `NO-GO` at the NVIDIA A3 manual evidence gate; representative benchmark was not run.
-3. Exa raw `auto` Search plus highlights — `DISCOVERY SUFFICIENT` at A4.1; implementation of any selection/ranking layer and the representative benchmark require separate approval.
-4. Stop for project-owner review. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
+3. Exa raw `auto` Search plus highlights — `DISCOVERY SUFFICIENT` at A4.1.
+4. Deterministic recency/provenance/lexical-dedup selector — A4.2 pre-live ready; live execution and the representative benchmark require separate approval.
+5. Stop for project-owner review. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
 
@@ -65,7 +68,7 @@ node scripts/exa-phase-a.mjs smoke --company NVIDIA --confirmed-free-starter
 node scripts/exa-phase-a-discovery.mjs discovery --company NVIDIA --confirmed-free-starter
 ```
 
-Do not run a live diagnostic without explicit phase-specific authorization. Each diagnostic makes at most one request and has no automatic retry or polling path. The A3 Exa diagnostic uses structured output plus grounding; the A4.1 diagnostic instead exposes only raw result metadata and requested highlights in a transient localhost view so manual review can distinguish discovery failure from synthesis/selection failure. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one. The representative benchmark remains separately gated.
+Do not run a live diagnostic without explicit phase-specific authorization. Each diagnostic makes at most one request and has no automatic retry or polling path. The A3 Exa diagnostic uses structured output plus grounding; the A4.1 diagnostic instead exposes raw result metadata and requested highlights for separate inspection without proving which A3 pipeline stage caused the failure. A4.2 selects only from already-retrieved candidates and performs no network or source-page access. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one. The representative benchmark remains separately gated.
 
 ## Submission targets
 
