@@ -31,6 +31,8 @@ Provider `publishedDate` is selection metadata only:
 
 Future dates are never silently treated as recent. A missing, malformed, or future provider date does not make an otherwise usable candidate ineligible; `UNKNOWN` sorts below `FALLBACK` and above `OLD`.
 
+Accepted provider-date syntax is deliberately limited to a calendar-valid `YYYY-MM-DD` or the bounded timezone-explicit ISO form `YYYY-MM-DDTHH:mm:ss[.fraction](Z|±HH:mm)`, with one to three fractional-second digits. Repository Exa fixtures use the UTC `.sssZ` form; offset support is a bounded syntax allowance rather than a claim that an offset value was observed. A pre-live independent review found that the original implementation's permissive `Date.parse` call normalized impossible dates and accepted trailing garbage, allowing malformed metadata to receive valid recency priority. Before any live A4.2 request, it was replaced with explicit syntax, calendar, clock, and offset validation; impossible dates and partial-prefix parses now remain `UNKNOWN`.
+
 Source classification is deliberately binary. A URL is `FIRST_PARTY` only when its parsed hostname equals the normalized official domain or ends with `.` plus that domain. Matching is case-insensitive, handles ports through URL parsing, strips one trailing hostname dot, and rejects deceptive prefix/suffix domains. Every other source is `OTHER`; there is no publisher allowlist.
 
 ## Bounded lexical duplicate rule
@@ -54,7 +56,7 @@ Representatives are ordered by that hierarchy and the first three are returned. 
 
 ## Local verification
 
-Synthetic tests cover recency boundaries and malformed/future metadata; root/subdomain and deceptive-domain cases; obvious, morphological, sparse-title, and nonduplicate lexical comparisons, including same-template headlines with different counterpart organizations or locations; representative choice; lexicographic ordering; exact/insufficient selection counts; diagnostics; deterministic stability; input immutability; and static absence of provider, network, filesystem, or company-specific selector logic. `node --test test/select-signals.test.mjs` passed 23/23 tests, and the full `node --test` suite passed 64/64.
+Synthetic tests cover recency boundaries; strict provider-date syntax; impossible calendar dates, including leap-year behavior; trailing garbage; malformed/future metadata; root/subdomain and deceptive-domain cases; obvious, morphological, sparse-title, and nonduplicate lexical comparisons, including same-template headlines with different counterpart organizations or locations; representative choice; lexicographic ordering; exact/insufficient selection counts; diagnostics; deterministic stability; input immutability; and static absence of provider, network, filesystem, or company-specific selector logic. `node --test test/select-signals.test.mjs` passed 24/24 tests, and the full `node --test` suite passed 65/65.
 
 The repository exposes no `npm run typecheck`. Applicable syntax validation used `node --check src/selection/selectSignals.mjs` and `node --check test/select-signals.test.mjs`; both passed. The selector has no third-party dependency. `git diff --check` also passed.
 

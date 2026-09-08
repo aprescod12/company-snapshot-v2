@@ -54,6 +54,18 @@ test("missing, malformed, and future dates are UNKNOWN rather than recent", () =
   );
 });
 
+test("provider dates require strict syntax and valid calendar values", () => {
+  assert.equal(classifyRecency("2026-02-30", NOW), RECENCY_BUCKET.UNKNOWN);
+  assert.equal(classifyRecency("2026-09-08junk", NOW), RECENCY_BUCKET.UNKNOWN);
+  assert.equal(classifyRecency("2025-02-29T00:00:00.000Z", NOW), RECENCY_BUCKET.UNKNOWN);
+  assert.equal(classifyRecency("2024-02-29T00:00:00.000Z", NOW), RECENCY_BUCKET.OLD);
+  assert.equal(classifyRecency("2026-09-08T13:00:00.000+01:00", NOW), RECENCY_BUCKET.RECENT);
+  assert.equal(classifyRecency("2026-09-08T08:00:00.000-04:00", NOW), RECENCY_BUCKET.RECENT);
+  assert.equal(classifyRecency("2026-09-08T12:00:00.000+24:00", NOW), RECENCY_BUCKET.UNKNOWN);
+  assert.equal(classifyRecency("2026-09-01T00:00:00.000Z", NOW), RECENCY_BUCKET.RECENT);
+  assert.equal(classifyRecency("2026-09-01", NOW), RECENCY_BUCKET.RECENT);
+});
+
 test("source classification accepts the official root and true subdomains", () => {
   assert.equal(classifySource("https://example.com/news", "example.com"), SOURCE_CLASS.FIRST_PARTY);
   assert.equal(

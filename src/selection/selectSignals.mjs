@@ -1,4 +1,6 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
+const PROVIDER_DATE_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2}))?$/;
 
 export const RECENCY_BUCKET = Object.freeze({
   RECENT: "RECENT",
@@ -158,6 +160,45 @@ function parseHttpUrl(value) {
   }
 }
 
+function parseProviderDate(value) {
+  const match = PROVIDER_DATE_PATTERN.exec(value);
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, fraction, zone] =
+    match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText ?? 0);
+  const minute = Number(minuteText ?? 0);
+  const second = Number(secondText ?? 0);
+  const millisecond = Number((fraction ?? "").padEnd(3, "0"));
+
+  const calendarDate = new Date(0);
+  calendarDate.setUTCFullYear(year, month - 1, day);
+  calendarDate.setUTCHours(hour, minute, second, millisecond);
+  if (
+    calendarDate.getUTCFullYear() !== year ||
+    calendarDate.getUTCMonth() !== month - 1 ||
+    calendarDate.getUTCDate() !== day ||
+    calendarDate.getUTCHours() !== hour ||
+    calendarDate.getUTCMinutes() !== minute ||
+    calendarDate.getUTCSeconds() !== second ||
+    calendarDate.getUTCMilliseconds() !== millisecond
+  ) {
+    return null;
+  }
+
+  if (!zone || zone === "Z") return calendarDate.getTime();
+
+  const offsetHour = Number(zone.slice(1, 3));
+  const offsetMinute = Number(zone.slice(4, 6));
+  if (offsetHour > 23 || offsetMinute > 59) return null;
+
+  const offsetMs = (offsetHour * 60 + offsetMinute) * 60_000;
+  return calendarDate.getTime() + (zone[0] === "+" ? -offsetMs : offsetMs);
+}
+
 export function classifyRecency(publishedDate, now) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
     throw new TypeError("now must be a valid Date.");
@@ -167,8 +208,8 @@ export function classifyRecency(publishedDate, now) {
     return RECENCY_BUCKET.UNKNOWN;
   }
 
-  const publishedAt = Date.parse(publishedDate);
-  if (!Number.isFinite(publishedAt) || publishedAt > now.getTime()) {
+  const publishedAt = parseProviderDate(publishedDate);
+  if (publishedAt === null || publishedAt > now.getTime()) {
     return RECENCY_BUCKET.UNKNOWN;
   }
 
