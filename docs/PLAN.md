@@ -2,9 +2,9 @@
 
 ## Status
 
-**Gemini A1 and the tested Exa A3 `auto` hypothesis are `NO-GO`. Exactly one Exa NVIDIA request was made on the verified Free Tier path; the response passed structural gates but failed manual signal usefulness/support gates. No representative benchmark is authorized, and no runtime architecture is frozen.**
+**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis are `NO-GO`. A bounded A4.1 raw-discovery decomposition diagnostic is implemented but has not run. A4.1 request count is 0, cumulative Exa request count remains 1, and no runtime architecture is frozen.**
 
-This document records the current approved V2 product and technical decisions. On 2026-09-08, the single authorized NVIDIA A1 request reached the Gemini Interactions API from the replacement AI Studio project shown as Free Tier with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, reporting that the model is no longer available to new users, before Search or model output occurred. Later that day, the single authorized Exa A3 NVIDIA request reached Search through the account's verified Free Tier path and returned structurally valid grounded output, but manual inspection found fewer than three useful, materially supported recent company signals. A2 and the Exa representative benchmark were not run. Any different model, mode, provider, benchmark, or production work requires explicit approval. Architecture becomes frozen only after a provider passes Phase A and the project owner approves the evidence.
+This document records the current approved V2 product and technical decisions. On 2026-09-08, the single authorized NVIDIA A1 request reached the Gemini Interactions API from the replacement AI Studio project shown as Free Tier with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, reporting that the model is no longer available to new users, before Search or model output occurred. Later that day, the single authorized Exa A3 NVIDIA request reached Search through the account's verified Free Tier path and returned structurally valid grounded output, but manual inspection found fewer than three useful, materially supported recent company signals. A4.1 now decomposes that failure by preparing a separately gated raw-result/highlights inspection, without synthesis or final-signal selection. Its live request has not been authorized or run. Any live A4.1 execution, different model/mode/provider, benchmark, or production work requires explicit approval. Architecture becomes frozen only after a provider passes Phase A and the project owner approves the evidence.
 
 ## Source-of-truth hierarchy
 
@@ -286,7 +286,15 @@ If Gemini passes the benchmark and the bounded repeatability sanity check, recor
 Authorized after Gemini's material failure and completed on 2026-09-08. The project owner first verified the actual account as Free Tier with no payment method or paid billing/automatic top-up path. Exactly one NVIDIA request used the corrected dependency-free `auto + outputSchema + output.grounding` diagnostic. The request completed successfully and passed structural gates, but manual review failed the required usefulness, recency/source-quality, and material-support gates; the tested hypothesis is `NO-GO`. `deep-lite` was never tested and is not an automatic fallback. Do not run the representative benchmark or any other provider/mode without separate authorization.
 
 ### A4 — Stop and reassess
-If both fail, do **not** automatically test Tavily, Groq, Brave, RSS, or another provider. Stop and obtain a new approved decision.
+The stop-and-reassess gate was reached after Gemini A1 and Exa A3 failed their bounded hypotheses. The approved next step is not another provider or a larger architecture: it is the A4.1 decomposition below.
+
+### A4.1 — Raw Exa signal-discovery decomposition
+
+Prepare one separately authorized future NVIDIA request using raw Exa `auto` Search results plus default highlights, with no `outputSchema`, final snapshot, ranking layer, second model, date filter, category, or forced livecrawl. The request is designed to answer only whether raw discovery contains at least three distinct, useful, materially supported company-level events within the 180-day fallback window that should have outranked A3's selected signals.
+
+The pre-live diagnostic uses `POST https://api.exa.ai/search`, `type: "auto"`, `numResults: 10`, `contents: { highlights: true }`, one native fetch maximum, and no retry. Its signal-oriented query includes NVIDIA and current-date context but no expected event answer. Provider `publishedDate` is displayed as estimated discovery metadata only; manual source review determines event dates. Candidate material is transient on localhost, while console output remains aggregate.
+
+Current state: pre-live implementation only. A4.1 Exa request count is **0**, cumulative Exa request count remains **1**, `deep-lite` remains untested, and the A3 final-snapshot `NO-GO` is unchanged. See `docs/PHASE_A_EXA_DISCOVERY.md` for the bounded contract and future decision gate. Do not execute the live request without separate approval.
 
 ## Phase A deliverables
 

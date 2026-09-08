@@ -317,6 +317,32 @@ Result: **`NO-GO`** for the tested Exa `auto + outputSchema + output.grounding` 
 
 No raw response, result set, grounding-link collection, source-page content, credential, or transient display artifact was persisted. No representative benchmark, alternate Exa mode, `deep-lite`, Tavily, Phase B, UI, or deployment work occurred.
 
+### Exa A4.1 — raw signal-discovery decomposition pre-live
+
+Pre-live implementation date: 2026-09-08
+
+| Measure | Verified pre-live state |
+| --- | --- |
+| Experiment question | Does raw Exa discovery contain at least three strong recent NVIDIA events that one-shot A3 synthesis failed to select? |
+| Future endpoint / mode | `POST https://api.exa.ai/search`; raw `auto` Search; 10 results; non-streamed |
+| Requested contents | `contents.highlights: true`; no summary or full text |
+| Synthesis exclusions | No `outputSchema`, synthesis `systemPrompt`, final description/signals, ranking layer, or second model |
+| Retrieval exclusions | No `startPublishedDate`, other date filter, category, `additionalQueries`, forced livecrawl, or alternate Search mode |
+| Query integrity | Includes `NVIDIA`, current-date context, significant company-level categories, preferred source quality, and exclusions for routine code maintenance/profiles/stock commentary/evergreen/duplicates; seeds no expected event |
+| Candidate display | Rank, escaped title, exact HTTP(S) URL, provider date or `unknown`, optional author, and escaped returned highlights; transient localhost only with no-store/no-cache headers |
+| Date semantics | Provider `publishedDate` is estimated discovery metadata only; future manual source inspection must establish supported event dates |
+| Aggregate diagnostics | Endpoint, type, body-inclusive latency, result/date/highlight/domain counts, and provider-returned total cost only |
+| Safety | One fetch maximum, no retry/polling, minimized/redacted errors, no candidate console logging, no filesystem persistence |
+| Provider requests | A4.1: 0; cumulative Exa: 1 |
+
+Future outcome definitions:
+
+- **`DISCOVERY SUFFICIENT`** — at least three distinct, useful, materially supported NVIDIA company-level events within 180 days; record the subset within 90 days.
+- **`DISCOVERY INSUFFICIENT`** — inspectable raw results contain fewer than three qualifying distinct events within 180 days.
+- **`BLOCKED`** — request contract, credential/environment, network, or response shape prevents meaningful inspection.
+
+No raw candidate set or new source page has been observed. The A3 final-snapshot hypothesis remains `NO-GO`; `deep-lite` remains untested; no benchmark or production architecture is authorized.
+
 ## Phase B
 _Not yet run._
 

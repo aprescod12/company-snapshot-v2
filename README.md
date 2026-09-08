@@ -15,15 +15,18 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Gemini A1 and the tested Exa A3 `auto` hypothesis are `NO-GO`.**
+**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis are `NO-GO`; the A4.1 raw-discovery decomposition is pre-live ready but has not run.**
 
-The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` hypothesis is therefore `NO-GO`, and the runtime architecture remains intentionally **not frozen**.
+The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
+
+A4.1 now isolates whether that failure came from raw discovery or one-shot selection. Its separate diagnostic requests raw `auto` Search results plus highlights and renders candidates transiently without synthesizing a description or final three signals. The diagnostic is implemented and mocked locally, but no A4.1 Exa request has been made: cumulative Exa request count remains 1 and the runtime architecture remains intentionally **not frozen**.
 
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
 2. Exa `auto` Search with structured output and provider grounding — `NO-GO` at the NVIDIA A3 manual evidence gate; representative benchmark was not run.
-3. If both fail, stop and reassess. Tavily and Groq are not automatic fallbacks.
+3. Exa raw `auto` Search plus highlights — A4.1 decomposition is pre-live only; live execution requires separate approval.
+4. If discovery decomposition does not justify a small next step, stop and reassess. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
 
@@ -59,9 +62,10 @@ There is no production application setup yet. The Phase A diagnostics require No
 ```bash
 node scripts/gemini-phase-a.mjs smoke --company NVIDIA --confirmed-unbilled
 node scripts/exa-phase-a.mjs smoke --company NVIDIA --confirmed-free-starter
+node scripts/exa-phase-a-discovery.mjs discovery --company NVIDIA --confirmed-free-starter
 ```
 
-Each diagnostic makes at most one request and has no automatic retry or polling path. The Exa diagnostic uses one non-streamed `auto` Search call, requires provider-returned field-level grounding for the displayed claims, and serves only exact HTTP(S) grounding links in an in-memory localhost view. It omits optional highlights because structured output plus grounding already supplies the bounded smoke's required evidence mapping, keeping the first hypothesis smaller and independent of content behavior it does not need. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one. The representative benchmark remains separately gated.
+Do not run a live diagnostic without explicit phase-specific authorization. Each diagnostic makes at most one request and has no automatic retry or polling path. The A3 Exa diagnostic uses structured output plus grounding; the A4.1 diagnostic instead exposes only raw result metadata and requested highlights in a transient localhost view so manual review can distinguish discovery failure from synthesis/selection failure. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one. The representative benchmark remains separately gated.
 
 ## Submission targets
 
