@@ -255,25 +255,26 @@ Populate this section only with work actually performed.
 
 ### Gemini A1 — NVIDIA smoke
 
-Verification date: 2026-09-07
+Verification date: 2026-09-08
 
 | Measure | Observed result |
 | --- | --- |
 | Input | `NVIDIA` |
 | Intended company | NVIDIA Corporation |
-| Provider request | Not made; initial credential preflight failed closed and the replacement key remains unused |
+| Provider request | Exactly one request made; provider returned `model_unavailable` before grounded output |
+| Model access | Failed; provider reported `gemini-2.5-flash` is no longer available to new users |
 | Resolved company / official domain | Not observed |
 | Resolution correct? | Not evaluated |
 | Candidate events | `N/A` |
 | Final signals / dates / recency / distinctness | Not observed |
 | Search queries / citations / sources | Not observed |
 | Source provenance / manual support | Not evaluated; no provider links were returned |
-| Latency | Not observed; no network request occurred |
-| Failure classification | `provider_auth` (local credential absent; not evidence of provider rejection) |
-| Free-path/account behavior | Replacement AI Studio project is shown as Free Tier with billing not set up; actual request behavior is not evaluated |
-| Terms/display diagnostic | Interactions API code path and mocked contract checks implemented but not run with provider material |
+| Latency | Approximately 5.0 seconds command wall time; provider latency metric was not emitted on the HTTP error path |
+| Failure classification | `model_unavailable` |
+| Free-path/account behavior | The unbilled request reached the API without a paid-access error, but the required workflow could not execute because the approved model was unavailable |
+| Terms/display diagnostic | Not reached; no Grounded Result or Search Suggestions were returned |
 
-Result: **`BLOCKED`**, not `NO-GO`. `GEMINI_API_KEY` was not set in the process environment during the initial preflight. An untracked `.env` appeared later but was neither sourced nor used; its assignment was exposed by a flawed secret-scan command, and that credential has since been revoked/rotated and replaced. The replacement key's AI Studio project is shown as Free Tier with billing not set up, but no provider request has tested actual account behavior. Phase A remains blocked pending corrected-commit review, push approval, and separate authorization for NVIDIA A1, so this result neither proves nor disproves Gemini viability.
+Result: **`NO-GO`** for the approved `gemini-2.5-flash` hypothesis. After the initial credential blocker was resolved, the one authorized request produced a model-specific unavailability error rather than an authentication, quota, or paid-access error. Because model access is an A1 hard gate, the smoke stopped without a retry or model substitution. The provider's suggestion to use a different model was not acted on because that would change the approved hypothesis and require a second request.
 
 Per the hard-stop rule, the ordinary cohort, edge cohort, manual source inspections, and repeatability checks were not run. No raw provider response, Grounded Result, Search Suggestions HTML, provider-returned link collection, citation URL, or temporary display artifact was created or persisted. Exa and all later-phase work were not started.
 

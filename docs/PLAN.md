@@ -2,9 +2,9 @@
 
 ## Status
 
-**Phase A is `BLOCKED` at pre-live-test review. No runtime architecture is frozen.**
+**Gemini A1 is `NO-GO` for the approved `gemini-2.5-flash` hypothesis. No runtime architecture is frozen.**
 
-This document records the current approved V2 product and technical decisions. The bounded Gemini diagnostic exists, but A1 made no provider request because `GEMINI_API_KEY` was absent from the process environment during the initial preflight. A credential that appeared later was exposed by a flawed local scan and was not used; it has now been revoked/rotated and replaced. The replacement AI Studio project is shown as Free Tier with billing not set up, but no live request has verified account behavior. Phase A remains blocked pending human approval of the corrected local commit, push approval, and a separately authorized NVIDIA A1 smoke test. Architecture becomes frozen only after Phase A demonstrates acceptable behavior on real companies and the project owner approves the evidence.
+This document records the current approved V2 product and technical decisions. On 2026-09-08, the single authorized NVIDIA A1 request reached the Gemini Interactions API from the replacement AI Studio project shown as Free Tier with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, reporting that the model is no longer available to new users, before Search or model output occurred. That fails the approved model-availability hard gate. A2 was not run, and testing a different Gemini model is a different hypothesis requiring explicit approval. Architecture becomes frozen only after a provider passes Phase A and the project owner approves the evidence.
 
 ## Source-of-truth hierarchy
 
@@ -260,7 +260,7 @@ Verify:
 
 If the smoke test fails a hard requirement, stop Gemini immediately and document the exact blocker.
 
-**2026-09-07 initial outcome:** `BLOCKED` during credential preflight. The expected `GEMINI_API_KEY` was not present in the process environment, so no provider request was made and Gemini behavior remains untested. A credential that appeared later was exposed by a flawed local scan and was not used; it has since been revoked/rotated and replaced. The replacement AI Studio project is shown as Free Tier with billing not set up, but its behavior remains untested. Phase A is still `BLOCKED` pending corrected-commit review, push approval, and separate authorization for A1. A2, Exa, and later phases did not begin.
+**2026-09-08 A1 outcome:** `NO-GO`. After the 2026-09-07 credential preflight blocker was resolved, exactly one authorized NVIDIA request was made from the replacement Free Tier project with billing not set up. The provider returned `model_unavailable` for `gemini-2.5-flash`, stating that it is no longer available to new users. No Search execution, grounded result, citations, Search Suggestions, or provider links were returned. Per the hard-stop rule, A2 was not run. Exa and later phases did not begin and require separate authorization.
 
 ### A2 — Gemini benchmark
 Only if A1 passes, run the approved representative benchmark in `docs/TESTING.md`.
