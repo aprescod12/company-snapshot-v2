@@ -15,14 +15,14 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Planning / Phase A not yet started.**
+**Phase A is `BLOCKED` at pre-live-test review.**
 
-The runtime architecture is intentionally **not frozen**. The first engineering milestone is a bounded live-company viability benchmark.
+The bounded, dependency-free Gemini diagnostic is implemented. Its initial credential preflight failed closed on 2026-09-07, so no provider request was made. The later exposed credential was never used and has now been revoked/rotated and replaced; the replacement AI Studio project is shown as Free Tier with billing not set up, and its local key has not been used. Phase A remains blocked pending human approval of the corrected local commit, push approval, and a separately authorized NVIDIA A1 smoke test. The runtime architecture remains intentionally **not frozen**.
 
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — smoke test and benchmark.
-2. If Gemini materially fails, Exa — one bounded smoke test and the same benchmark.
+2. If Gemini materially fails and the project owner explicitly authorizes it, Exa — one bounded smoke test and the same benchmark.
 3. If both fail, stop and reassess. Tavily and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
@@ -54,7 +54,13 @@ This is a clean V2 repository. V1 remains separate as historical research, empir
 
 ## Setup
 
-Application setup will be added after the Phase A architecture decision. Do not scaffold production runtime solely to make this README look complete.
+There is no production application setup yet. The Phase A diagnostic requires Node.js 22 and a `GEMINI_API_KEY` supplied through the environment; never commit the value or a `.env` file. The operator must independently verify that the key's project has no active billing account before passing the required confirmation flag.
+
+```bash
+node scripts/gemini-phase-a.mjs smoke --company NVIDIA --confirmed-unbilled
+```
+
+The diagnostic makes at most one synchronous, non-background Interactions API request with `store: false`, does not poll, and serves returned Google material only from memory on localhost for manual inspection. It does not locally persist Grounded Results, Search Suggestions, or provider-returned links. Benchmark/repeat modes remain explicitly gated on prior-phase results; separate provider-side grounding retention remains subject to Google's terms.
 
 ## Submission targets
 

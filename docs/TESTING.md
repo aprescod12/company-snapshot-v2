@@ -15,6 +15,8 @@ This document has two purposes:
 
 Separate ordinary active companies from edge cases so intentional ambiguity/sparsity does not distort the main coverage metric.
 
+Run this cohort only after the NVIDIA A1 smoke test establishes model access, an unbilled/free-path request, actual Google Search execution, usable grounding/citation metadata, direct assessment-style output, and a workable temporary display of the Grounded Result with its associated Search Suggestions. A hard A1 failure stops Gemini immediately.
+
 ## Ordinary cohort
 
 | Input | Purpose |
@@ -43,19 +45,24 @@ Why Mercury matters: V1 encountered an apparent Mercury result that actually bel
 | Input | exact submitted name/domain |
 | Intended company | human reference target |
 | Resolved company | provider/application result |
-| Official domain | returned/identified domain |
+| Official domain | independently/defensibly identified domain |
 | Resolution correct? | yes/no/ambiguous |
-| Candidate events found | count |
+| Candidate events found | `N/A` for Gemini unless genuinely provider-exposed |
 | Final signals | 0–3 |
 | Signal dates | dates or explicit unknown |
 | Distinct events? | yes/no |
-| Source URLs | exact links used/displayed |
+| Search queries | count when directly exposed |
+| Citations/sources | count when directly exposed |
 | Sources support claims? | manually checked yes/no per signal |
 | Source provenance | tied to actual provider/search result? |
 | Recency | ≤90d / ≤180d / older fallback / unknown |
 | Latency | end-to-end milliseconds/seconds |
 | Failure classification | if applicable |
 | Notes | blocked pages, ambiguity, duplicates, weak evidence, provider issue |
+
+For Gemini, source links may be clicked/opened manually from the transient provider-rendered result during the benchmark, but the persistent record must not contain Google's returned URLs or link collections. Do not programmatically crawl or dereference the links. Do not persist complete Grounded Results, Search Suggestions HTML, citation-URL datasets, provider-returned link collections, or raw API-response dumps. Persist only the evaluation findings above.
+
+The primary Gemini experiment evaluates the Grounded Result itself. Gemini must directly produce the company identity, 2–3 sentence description, and exactly three concise recent signals. No second model call, extraction-to-synthesis architecture, or arbitrary rewrite is allowed.
 
 ---
 
@@ -71,7 +78,9 @@ A provider earns production only when all applicable hard gates pass.
 For Gemini specifically:
 - verify `gemini-2.5-flash` access;
 - verify Google Search grounding executes;
-- verify the required Grounded Result/Search Suggestions presentation can be implemented consistently with current provider terms.
+- verify the required Grounded Result/Search Suggestions presentation can be implemented consistently with current provider terms;
+- use the smallest temporary local display diagnostic needed to render the full Grounded Result with `google_search_result.result[].search_suggestions` as returned, require matched successful Search call/result steps with at least one non-empty query overall, tolerate additional empty string queries, and require valid inline `url_citation` URLs and byte spans while treating citation titles as optional;
+- verify the direct result is close enough to the assessment layout without a second model call or prohibited transformation.
 
 For Exa specifically:
 - verify current free/no-payment eligibility against the actual account before benchmark calls;
@@ -128,6 +137,15 @@ Target:
 - no normal case routinely exceeds ~45 seconds.
 
 Performance is a usability gate, not a reason to weaken grounding.
+
+## 3.10 Repeatability sanity check
+
+Only if the representative Gemini benchmark otherwise passes, rerun:
+
+- NVIDIA; and
+- Stripe or PostHog.
+
+Check provider availability, resolution, three-signal coverage, obvious citation/source integrity, major output-shape instability, and latency. This is not a new formal coverage threshold, but material repeatability failure affects the `GO` recommendation.
 
 ---
 
@@ -234,7 +252,30 @@ After deployment:
 Populate this section only with work actually performed.
 
 ## Phase A
-_Not yet run._
+
+### Gemini A1 — NVIDIA smoke
+
+Verification date: 2026-09-07
+
+| Measure | Observed result |
+| --- | --- |
+| Input | `NVIDIA` |
+| Intended company | NVIDIA Corporation |
+| Provider request | Not made; initial credential preflight failed closed and the replacement key remains unused |
+| Resolved company / official domain | Not observed |
+| Resolution correct? | Not evaluated |
+| Candidate events | `N/A` |
+| Final signals / dates / recency / distinctness | Not observed |
+| Search queries / citations / sources | Not observed |
+| Source provenance / manual support | Not evaluated; no provider links were returned |
+| Latency | Not observed; no network request occurred |
+| Failure classification | `provider_auth` (local credential absent; not evidence of provider rejection) |
+| Free-path/account behavior | Replacement AI Studio project is shown as Free Tier with billing not set up; actual request behavior is not evaluated |
+| Terms/display diagnostic | Interactions API code path and mocked contract checks implemented but not run with provider material |
+
+Result: **`BLOCKED`**, not `NO-GO`. `GEMINI_API_KEY` was not set in the process environment during the initial preflight. An untracked `.env` appeared later but was neither sourced nor used; its assignment was exposed by a flawed secret-scan command, and that credential has since been revoked/rotated and replaced. The replacement key's AI Studio project is shown as Free Tier with billing not set up, but no provider request has tested actual account behavior. Phase A remains blocked pending corrected-commit review, push approval, and separate authorization for NVIDIA A1, so this result neither proves nor disproves Gemini viability.
+
+Per the hard-stop rule, the ordinary cohort, edge cohort, manual source inspections, and repeatability checks were not run. No raw provider response, Grounded Result, Search Suggestions HTML, provider-returned link collection, citation URL, or temporary display artifact was created or persisted. Exa and all later-phase work were not started.
 
 ## Phase B
 _Not yet run._

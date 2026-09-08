@@ -2,9 +2,9 @@
 
 ## Status
 
-**Planning-only baseline. No runtime architecture is frozen yet.**
+**Phase A is `BLOCKED` at pre-live-test review. No runtime architecture is frozen.**
 
-This document records the current approved V2 product and technical decisions. Architecture becomes frozen only after Phase A demonstrates acceptable behavior on real companies.
+This document records the current approved V2 product and technical decisions. The bounded Gemini diagnostic exists, but A1 made no provider request because `GEMINI_API_KEY` was absent from the process environment during the initial preflight. A credential that appeared later was exposed by a flawed local scan and was not used; it has now been revoked/rotated and replaced. The replacement AI Studio project is shown as Free Tier with billing not set up, but no live request has verified account behavior. Phase A remains blocked pending human approval of the corrected local commit, push approval, and a separately authorized NVIDIA A1 smoke test. Architecture becomes frozen only after Phase A demonstrates acceptable behavior on real companies and the project owner approves the evidence.
 
 ## Source-of-truth hierarchy
 
@@ -91,19 +91,24 @@ First candidate:
 ```text
 company input
 → Gemini 2.5 Flash with Google Search grounding
-→ grounded, user-facing company snapshot
-→ source/citation metadata
-→ minimal application parsing/rendering
+→ directly user-facing grounded company snapshot
+→ provider grounding/citation metadata and Search Suggestions
+→ direct display with only provider-supported citation rendering
 ```
 
 Why it is worth testing:
 
 - current Google documentation lists `gemini-2.5-flash` as supporting Google Search grounding;
-- current pricing documentation lists Gemini 2.5 Flash input/output as free on the Free Tier and Search grounding as free up to 500 requests/day shared with Flash-Lite;
-- the grounded response can include live search queries, source URLs/titles, and citation support metadata.
+- current pricing documentation lists Gemini 2.5 Flash input/output as free on the Standard Free Tier and Search grounding as free up to 500 grounded prompts/day shared with Flash-Lite;
+- the recommended Interactions API supports `gemini-2.5-flash` with the built-in `google_search` tool and exposes Search calls/results, provider Search Suggestions, final model output, and inline URL citations in one response.
 
 Official references, verified 2026-09-07:
+- https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash
 - https://ai.google.dev/gemini-api/docs/google-search
+- https://ai.google.dev/gemini-api/docs/interactions-overview
+- https://ai.google.dev/api/interactions-api
+- https://ai.google.dev/static/api/interactions.openapi.json
+- https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026
 - https://ai.google.dev/gemini-api/docs/pricing
 - https://ai.google.dev/gemini-api/terms
 
@@ -113,10 +118,12 @@ Gemini is **not approved yet**.
 
 Phase A must verify the actual account can perform the required grounded request at $0 and that the resulting behavior satisfies the product and provider terms.
 
-Google's current Grounding with Google Search terms require Grounded Results to be displayed with associated Search Suggestions and restrict modification, extraction, storage, and repurposing of grounded results/links. Therefore:
+Google's current Grounding with Google Search terms require Grounded Results to be displayed with associated Search Suggestions and restrict modification, extraction, storage, tracking, and repurposing of grounded results/links. The terms call Gemini API grounding a Paid Service while the pricing table separately advertises an unpaid Free Tier allowance. The same terms restrict availability of Unpaid Services to end users in the EEA, Switzerland, and the UK, which is a future public-deployment risk if the production path remains unbilled. `store: false` disables Interaction storage but does not override the separate provider-side retention Google documents for grounding queries and results; the no-persistence guarantee here applies to this diagnostic's local/application behavior. For this assessment, published pricing is not sufficient evidence: the practical Phase A gate is whether the actual unbilled project/key completes the required workflow without paid usage; a successful call would not by itself resolve the terms ambiguity. Therefore:
 
 - do not assume a hidden grounded-research → arbitrary second-call rewrite architecture is acceptable;
 - first test a **direct user-facing grounded result** pattern;
+- do not persist complete Grounded Results, Search Suggestions HTML, grounding link collections, citation-URL datasets, or raw API-response dumps;
+- persist only factual evaluation findings that do not reproduce Google's returned grounded material or link collection;
 - if the required Company Snapshot layout cannot be produced while satisfying Google's terms, Gemini is a no-go even if technically capable;
 - do not attach billing or move to paid quota to make the approach work.
 
@@ -125,12 +132,14 @@ The smoke test must verify:
 2. `gemini-2.5-flash` is available to the account;
 3. Google Search grounding executes;
 4. usable source/citation metadata is returned;
-5. required Search Suggestions can be rendered compliantly;
+5. required Search Suggestions can be rendered with the Grounded Result in a temporary local display diagnostic that is removed before phase exit;
 6. the final response can be shaped closely enough to the assessment output without prohibited post-processing.
+
+The Phase A diagnostic uses one synchronous, non-background `POST` to the recommended Interactions API with `store: false`. It requires a completed interaction, matched successful `google_search_call`/`google_search_result` steps, provider `search_suggestions`, and valid `url_citation` annotations over the final model-output text. It does not poll. The exact documented `gemini-2.5-flash` Search contract currently uses the `/v1beta/interactions` endpoint, so response-shape and API-version change risk remain production concerns even if the benchmark passes.
 
 ## Plan B hypothesis — Exa
 
-If Gemini materially fails the smoke test or benchmark, test **one** Exa-based approach.
+If Gemini materially fails the smoke test or benchmark, stop. Test **one** Exa-based approach only after the project owner explicitly authorizes it.
 
 Preferred shape:
 
@@ -251,13 +260,15 @@ Verify:
 
 If the smoke test fails a hard requirement, stop Gemini immediately and document the exact blocker.
 
+**2026-09-07 initial outcome:** `BLOCKED` during credential preflight. The expected `GEMINI_API_KEY` was not present in the process environment, so no provider request was made and Gemini behavior remains untested. A credential that appeared later was exposed by a flawed local scan and was not used; it has since been revoked/rotated and replaced. The replacement AI Studio project is shown as Free Tier with billing not set up, but its behavior remains untested. Phase A is still `BLOCKED` pending corrected-commit review, push approval, and separate authorization for A1. A2, Exa, and later phases did not begin.
+
 ### A2 — Gemini benchmark
 Only if A1 passes, run the approved representative benchmark in `docs/TESTING.md`.
 
-If Gemini passes the benchmark, freeze the retrieval architecture and stop provider evaluation.
+If Gemini passes the benchmark and the bounded repeatability sanity check, record a `GO` recommendation and stop provider evaluation. Do not freeze the retrieval architecture until the project owner reviews and approves the Phase A evidence.
 
 ### A3 — Exa smoke + benchmark
-Only if Gemini fails materially.
+Only if Gemini fails materially **and** the project owner explicitly authorizes this later experiment.
 
 First verify free/no-paid feasibility with the actual Exa account. If that passes, run the same representative benchmark.
 
@@ -269,8 +280,8 @@ If both fail, do **not** automatically test Tavily, Groq, Brave, RSS, or another
 ## Phase A deliverables
 
 - bounded benchmark code/diagnostic only;
-- raw/structured benchmark results;
-- source links for manual inspection;
+- persistent evaluation findings only, without raw Google Grounded Results, Search Suggestions HTML, grounding link collections, citation-URL datasets, or API-response dumps;
+- transient access to grounding links during manual source inspection;
 - latency observations;
 - failure classifications;
 - concise decision record;
@@ -278,6 +289,10 @@ If both fail, do **not** automatically test Tavily, Groq, Brave, RSS, or another
 - no production UI;
 - no final API architecture;
 - no later-phase work.
+
+For Gemini, candidate-event count is `N/A` unless the provider genuinely exposes a meaningful candidate-event set. Do not add extraction merely to populate that metric. Where available, observe search-query count, citation/source count, and final signal count.
+
+Only when the representative Gemini benchmark otherwise meets every `GO` gate, rerun NVIDIA and one private/smaller ordinary company (Stripe or PostHog) as a bounded repeatability sanity check. This adds no separate coverage threshold but material one-shot variability affects the recommendation.
 
 ---
 
@@ -407,7 +422,7 @@ Reuse is allowed only when the V2 task benefits materially and the reused code d
    - Mitigation: smoke test before architecture.
 
 2. **Gemini Search terms do not fit the required presentation.**
-   - Mitigation: direct user-facing grounded-result experiment; treat compliance as a hard gate.
+   - Mitigation: direct user-facing grounded-result experiment; render Search Suggestions as returned; treat compliance and regional availability as hard production gates.
 
 3. **Free documentation differs from actual account behavior.**
    - Mitigation: account-level verification; never attach billing just to make a candidate work.
