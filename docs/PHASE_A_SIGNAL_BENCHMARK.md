@@ -115,3 +115,7 @@ Independent per-company reviewers agreed with the Stripe and PostHog candidate c
 Semantic duplicate recall remains a recurring limitation across NVIDIA (`1/2`, `3/6`), Stripe (`4/5/8`), and PostHog (`1/5`). It did not corrupt any observed selected three, but the current fixed discovery → selector signal path still failed representative coverage because both new raw sets contained fewer than three qualifying distinct events.
 
 This result does not establish a selector failure: neither raw set met the prerequisite of three qualifying distinct events. It also does not establish full provider/product GO, production company resolution, description quality, a source-verification architecture, synthesis, edge behavior, endpoint/UI readiness, or deployment readiness. The evidence returns to the project owner for reassessment; no architecture patch or later-phase work was begun.
+
+## Post-benchmark recency note
+
+A subsequent zero-provider reassessment in `docs/PHASE_A_RECENCY_REASSESSMENT.md` compares the then-approved 180-day cutoff with bounded sparse fallbacks. It preserves this experiment's contract, classifications, early stop, and **`A4.3 SIGNAL BENCHMARK FAIL`** outcome and concludes `NO POLICY CHANGE YET`; no implementation is authorized.

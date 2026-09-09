@@ -2,9 +2,9 @@
 
 ## Status
 
-**A4.3 validly early-stopped with `A4.3 SIGNAL BENCHMARK FAIL`. Reusing NVIDIA's A4.2 pass, Stripe and PostHog were both `DISCOVERY INSUFFICIENT`; the resulting maximum ordinary coverage was 3/5, below the required 4/5. A4.3 made 2 requests, cumulative Exa request count is 5, and no runtime architecture is frozen.**
+**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL` under its approved contract. The zero-provider A4.3R0 reassessment concludes `NO POLICY CHANGE YET`: broader sparse windows improve only PostHog's raw count and repair neither recorded selected set. A4.3 requests remain 2, cumulative Exa requests remain 5, and no runtime architecture is frozen.**
 
-This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events, so each was `DISCOVERY INSUFFICIENT`. The mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. This evidence does not authorize another provider, query tuning, selector changes, edge testing, source-verification architecture, synthesis, or production work. The current next step is project-owner reassessment, and architecture remains unfrozen.
+This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events under the approved 180-day policy, so each was `DISCOVERY INSUFFICIENT`; the mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. A4.3R0 later found that broader sparse policies would make PostHog's raw set sufficient but would not change the frozen selector's invalid `3,2,7` selection; Stripe remains insufficient under defensible qualitative safeguards. The reassessment therefore recommends no recency-policy change yet. The current next step is project-owner review of the unresolved evidence-aware verification/backfill boundary. No policy implementation, provider request, selector/retrieval change, or later phase is authorized, and architecture remains unfrozen.
 
 ## Source-of-truth hierarchy
 
@@ -317,6 +317,16 @@ The separately authorized A4.3 benchmark reused the completed NVIDIA A4.2 `SELEC
 After the second insufficiency, NVIDIA was the sole confirmed pass and only two cases remained. Maximum possible ordinary coverage was therefore `3/5`, below the required `4/5`; the benchmark stopped before Canva and `notion.so`. A4.3 made **2** Exa requests with zero retries, and cumulative Exa request count is **5**. Human/selector duplicate comparisons again showed missed semantic groups—Stripe `4/5/8` and PostHog `1/5`—but those misses did not affect either selected set. See `docs/PHASE_A_SIGNAL_BENCHMARK.md` for the full candidate evidence.
 
 Stop for project-owner reassessment. Do not rerun any cohort case, change discovery/selection behavior, begin Mercury or Craigslist edge work, test another provider, or begin A4.4/later phases without a new full-context authorization.
+
+### A4.3R0 — Recency policy reassessment
+
+The assessment requires “recent signals” but does not prescribe the project's ≤90-day preference or 180-day fallback cutoff. A zero-provider reassessment compared the current policy with 270-day and nine-calendar-month sparse fallbacks using only the captured NVIDIA, Stripe, and PostHog evidence.
+
+**A4.3R0 decision: `NO POLICY CHANGE YET`.** Retain ≤90 days as preferred and 91–180 days as the currently approved fallback. Although a future sparse policy could require a discrete material event, exact-destination support and event dating, explicit older-context labeling, and rejection of evergreen or retrospective commentary, the captured evidence does not justify choosing a new maximum now.
+
+PostHog rank 9, a supported first-party LLM trace-clustering event dated 2026-03-11, was about 182 days old and qualifies under either broader policy. That changes PostHog raw evidence from two to three events, but the frozen selector still chooses `3,2,7`; sparse rank 9 remains behind recent but invalid rank 7. Stripe rank 9's underlying 2025-12-11 event was about 272 days old: it is outside 270 days and numerically inside nine calendar months, but its returned source is a recent retrospective explainer, so it fails the discussed non-retrospective safeguard. Stripe therefore remains raw-insufficient. Even a more permissive count would not repair its frozen `2,1,4` selection.
+
+A4.3 remains a valid `FAIL` under its then-approved contract and is not retroactively relabeled. `docs/TESTING.md` and executable behavior remain unchanged. See `docs/PHASE_A_RECENCY_REASSESSMENT.md`. Stop for project-owner review; any future recency-policy change, source-verification/backfill design, implementation, or live experiment requires separate authorization.
 
 ## Phase A deliverables
 

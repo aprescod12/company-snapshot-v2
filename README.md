@@ -15,7 +15,7 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**A4.3 validly early-stopped with `A4.3 SIGNAL BENCHMARK FAIL`: NVIDIA's A4.2 pass was reused, while Stripe and PostHog were both `DISCOVERY INSUFFICIENT`. Maximum possible ordinary coverage fell to 3/5, below the required 4/5.**
+**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`. A zero-provider recency reassessment concludes `NO POLICY CHANGE YET`: broader sparse windows improve only PostHog's raw count and do not repair either recorded selected set.**
 
 The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
 
@@ -25,6 +25,8 @@ A4.2 now provides a generic dependency-free selector for already-retrieved candi
 
 A4.3 reused that NVIDIA result and then ran the frozen discovery → selector pipeline sequentially on Stripe and PostHog. Each one-request raw set contained only two qualifying distinct events, so both cases were `DISCOVERY INSUFFICIENT`. After two new failures, even successful Canva and `notion.so` cases could reach only 3/5, making the required 4/5 impossible; the benchmark stopped without those requests. A4.3 made 2 requests with zero retries, cumulative Exa request count is 5, and the result returns for project-owner reassessment. The recurring lexical duplicate-recall misses did not corrupt any observed selected set.
 
+A4.3R0 used no provider access and preserved that historical result. It found that PostHog's supported first-party rank 9 event, about 182 days old, would make the raw set sufficient under a bounded sparse fallback—but the frozen selector would still choose invalid rank 7 instead. Stripe's roughly 272-day-old rank 9 event was returned through a recent retrospective explainer and remains ineligible under defensible safeguards. Because neither broader window repairs the actual pipeline and the evidence is sensitive to cutoff choice, the reassessment recommends no change yet. A separate decision about evidence-aware source verification/backfill remains required.
+
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
@@ -32,7 +34,8 @@ Current provider decision sequence:
 3. Exa raw `auto` Search plus highlights — `DISCOVERY SUFFICIENT` at A4.1.
 4. Deterministic recency/provenance/lexical-dedup selector — `SELECTOR PASS` on the single A4.2 NVIDIA smoke.
 5. Fixed A4.1 discovery → A4.2 selector representative benchmark — `A4.3 SIGNAL BENCHMARK FAIL` after Stripe and PostHog were both discovery-insufficient; mandatory early stop at a 3/5 coverage ceiling.
-6. Stop for project-owner reassessment. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
+6. Zero-provider A4.3R0 recency reassessment — `NO POLICY CHANGE YET`; broader windows do not repair selected-set validity.
+7. Stop for project-owner review. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
 
