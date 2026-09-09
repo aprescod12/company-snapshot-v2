@@ -14,6 +14,7 @@ function evidence(overrides = {}) {
     resolvedCompanyName: "Stripe",
     officialDomain: "stripe.com",
     evidenceUrls: ["https://newsroom.stripe.com/releases/example"],
+    ambiguous: false,
     ...overrides,
   };
 }
@@ -34,6 +35,15 @@ test("name input is normalized without inventing an official domain", () => {
     officialDomain: null,
   });
   assert.equal(prepareCompanyTarget("Acme Systems").companyName, "Acme Systems");
+  for (const input of ["Stripe Inc.", "Johnson & Johnson, Inc.", "Acme Co."]) {
+    assert.deepEqual(prepareCompanyTarget(input), {
+      status: TARGET_STATUS.PREPARED,
+      kind: TARGET_KIND.NAME,
+      submittedInput: input,
+      companyName: input,
+      officialDomain: null,
+    });
+  }
 });
 
 test("common website inputs use one normalized hostname anchor", () => {
@@ -85,20 +95,21 @@ test("clear name evidence with a corroborated official domain resolves", () => {
   });
 });
 
-test("a multi-word name can match its complete hyphenated domain label", () => {
+test("an explicitly unambiguous name can resolve with a non-lexical official domain", () => {
   assert.deepEqual(confirmCompanyIdentity(prepareCompanyTarget("Acme Systems"), {
     resolvedCompanyName: "Acme Systems",
-    officialDomain: "acme-systems.com",
-    evidenceUrls: ["https://news.acme-systems.com/releases/example"],
+    officialDomain: "blueharbor.test",
+    evidenceUrls: ["https://news.blueharbor.test/releases/example"],
+    ambiguous: false,
   }), {
     status: TARGET_STATUS.RESOLVED,
     kind: TARGET_KIND.NAME,
     companyName: "Acme Systems",
-    officialDomain: "acme-systems.com",
+    officialDomain: "blueharbor.test",
   });
 });
 
-test("name evidence must include a valid corroborated domain", () => {
+test("name evidence requires explicit unambiguous valid corroborated identity evidence", () => {
   const target = prepareCompanyTarget("Stripe");
   for (const candidate of [
     evidence({ evidenceUrls: ["https://example.test/stripe"] }),
@@ -106,6 +117,11 @@ test("name evidence must include a valid corroborated domain", () => {
     undefined,
     evidence({ ambiguous: true }),
     evidence({ contradictory: true }),
+    {
+      resolvedCompanyName: "Stripe",
+      officialDomain: "stripe.com",
+      evidenceUrls: ["https://newsroom.stripe.com/releases/example"],
+    },
   ]) {
     assert.equal(confirmCompanyIdentity(target, candidate).status, TARGET_STATUS.CLARIFICATION_NEEDED);
   }
@@ -127,6 +143,7 @@ test("domain input retains its submitted anchor and rejects provider retargeting
     resolvedCompanyName: "Notion",
     officialDomain: "notion.so",
     evidenceUrls: ["https://www.notion.so/releases/example"],
+    ambiguous: true,
   }), {
     status: TARGET_STATUS.RESOLVED,
     kind: TARGET_KIND.DOMAIN,
@@ -154,11 +171,12 @@ test("domain input retains its submitted anchor and rejects provider retargeting
   });
 });
 
-test("generic conservative consistency guard prevents Mercury from resolving to shipmercury.com", () => {
+test("Mercury ambiguity requires clarification without a lexical domain rule", () => {
   const result = confirmCompanyIdentity(prepareCompanyTarget("Mercury"), {
     resolvedCompanyName: "Mercury",
     officialDomain: "shipmercury.com",
     evidenceUrls: ["https://shipmercury.com/news/example"],
+    ambiguous: true,
   });
   assert.equal(result.status, TARGET_STATUS.CLARIFICATION_NEEDED);
 });
@@ -167,4 +185,5 @@ test("the targeting boundary contains no provider client or company-specific pro
   const source = readFileSync(new URL("../src/targeting/companyTarget.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(source, /\b(?:Mercury|shipmercury|Exa|Gemini|Tavily|Groq)\b/i);
   assert.doesNotMatch(source, /\bfetch\s*\(|\bhttps?\.request\s*\(|\baxios\b|\bnode-fetch\b/i);
+  assert.doesNotMatch(source, /\bdomainIsConsistentWithName\b/);
 });

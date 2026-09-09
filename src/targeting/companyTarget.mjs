@@ -74,7 +74,9 @@ function parseDomainInput(value) {
 }
 
 function looksLikeWebsiteInput(value) {
-  return /^[a-z][a-z\d+.-]*:/i.test(value) || /[./?#@]/.test(value) || value.startsWith("www.");
+  if (/^[a-z][a-z\d+.-]*:/i.test(value) || /^www\./i.test(value)) return true;
+  if (/\s/.test(value)) return false;
+  return /[./?#@]/.test(value);
 }
 
 function normalizeName(value) {
@@ -96,17 +98,6 @@ function namesAreConsistent(submittedName, resolvedName) {
   const submittedText = submitted.join(" ");
   const resolvedText = resolved.join(" ");
   return submittedText === resolvedText || resolvedText.startsWith(`${submittedText} `);
-}
-
-function domainIsConsistentWithName(domain, companyName) {
-  const label = domain.split(".")[0];
-  const nameWords = normalizedWords(companyName);
-  const compactLabel = normalizedWords(label).join("");
-  const compactName = nameWords.join("");
-  return (
-    compactLabel === compactName ||
-    nameWords.some((word) => word.length >= 3 && compactLabel === word)
-  );
 }
 
 function isSameDomainOrSubdomain(hostname, officialDomain) {
@@ -187,7 +178,7 @@ export function confirmCompanyIdentity(target, identityEvidence) {
   }
 
   const evidence = identityEvidence && typeof identityEvidence === "object" ? identityEvidence : {};
-  if (evidence.ambiguous === true || evidence.contradictory === true) {
+  if (evidence.contradictory === true) {
     return clarification("ambiguous_identity");
   }
 
@@ -230,14 +221,16 @@ export function confirmCompanyIdentity(target, identityEvidence) {
   const resolvedCompanyName =
     typeof evidence.resolvedCompanyName === "string" ? normalizeName(evidence.resolvedCompanyName) : "";
   const proposedDomain = normalizeEvidenceDomain(evidence.officialDomain);
-  if (!resolvedCompanyName || !proposedDomain || !Array.isArray(evidence.evidenceUrls)) {
+  if (
+    evidence.ambiguous !== false ||
+    !resolvedCompanyName ||
+    !proposedDomain ||
+    !Array.isArray(evidence.evidenceUrls)
+  ) {
     return clarification("insufficient_identity_evidence");
   }
   if (!namesAreConsistent(target.companyName, resolvedCompanyName)) {
     return clarification("contradictory_identity");
-  }
-  if (!domainIsConsistentWithName(proposedDomain, target.companyName)) {
-    return clarification("insufficient_identity_evidence");
   }
   if (!evidenceCorroboratesDomain(evidence.evidenceUrls, proposedDomain)) {
     return clarification("insufficient_identity_evidence");
