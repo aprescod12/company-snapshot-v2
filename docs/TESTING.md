@@ -481,6 +481,24 @@ All ten exact Stripe destinations were reviewed without a replacement-source sea
 
 Result: **`RETRIEVAL REPAIR FAIL`**. The fixed instruction did not repair Stripe raw retrieval sufficiency in this bounded fresh sample, so PostHog was prohibited and no further provider request occurred. This does not change historical A4.3 or A4.3R0, prove a selector-only defect, approve a recency-policy change, or authorize further retrieval/architecture work. Complete per-rank evidence is in `docs/PHASE_A_RETRIEVAL_REPAIR.md`.
 
+### A4.4 — Phase A architecture freeze
+
+Documentation verification date: 2026-09-09
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | Zero-provider architecture decision; no executable code or tests changed |
+| Baseline | `76016d6094cafb1e1bbb5c9f6ab7fe5cfacea817` on `main`, matching `origin/main`; clean worktree/index before edits |
+| Exa counts | A3 1; A4.1 1; A4.2 1; A4.3 2; A4.3R1 1; cumulative 6 |
+| Rejected shape | One broad Exa search → source-blind selector → final three |
+| Frozen direction | One broad request → prioritization/light dedupe → bounded source verification → optional one official-domain fallback only for missing slots → three valid signals or honest insufficient evidence |
+| Request ceiling | Two planned discovery requests per company; A4.4 itself used 0 |
+| Selector role | Candidate prioritization/light dedupe, not final evidence approval |
+| Recency | Unchanged: ≤90 days preferred; 91–180 fallback; >180 normally ineligible |
+| Required next test | A4.5: at most one Stripe official-domain fallback request; not authorized or run |
+
+Result: **architecture direction frozen, Phase A exit pending A4.5.** A4.4 makes no provider/product GO claim. It preserves A4.3 `FAIL`, A4.3R0 `NO POLICY CHANGE YET`, and A4.3R1 `RETRIEVAL REPAIR FAIL`; it prohibits a crawler, provider waterfall, third search, unbounded backfill, or V1-like evidence architecture without separate evidence and approval. See `docs/PHASE_A_ARCHITECTURE_FREEZE.md`.
+
 ## Phase B
 _Not yet run._
 

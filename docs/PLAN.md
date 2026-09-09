@@ -2,9 +2,9 @@
 
 ## Status
 
-**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL` and A4.3R0 remains `NO POLICY CHANGE YET`. The bounded A4.3R1 retrieval repair then failed at its required Stripe-first stop: the fixed source-quality/novelty `systemPrompt` still produced only two qualifying distinct ≤180-day Stripe events. A4.3R1 made 1 request, cumulative Exa requests are 6, and no runtime architecture is frozen.**
+**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`, A4.3R0 remains `NO POLICY CHANGE YET`, and A4.3R1 remains `RETRIEVAL REPAIR FAIL`. A4.4 freezes the Phase A direction—not production readiness—as one broad Exa discovery pass, bounded source verification/backfill, and at most one conditional official-domain fallback. A4.5 must test that fallback before Phase A exit. Cumulative Exa requests remain 6.**
 
-This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events under the approved 180-day policy, so each was `DISCOVERY INSUFFICIENT`; the mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. A4.3R0 later found that broader sparse policies would make PostHog's raw set sufficient but would not change the frozen selector's invalid `3,2,7` selection; Stripe remains insufficient under defensible qualitative safeguards. A4.3R1 tested exactly one fresh retrieval change—a fixed source-quality/novelty `systemPrompt`—and Stripe again had only two qualifying raw events, so it early-stopped before PostHog. The reassessment therefore still recommends no recency-policy change, and the retrieval repair is not supported. The current next step is project-owner review of the unresolved evidence-aware verification/backfill boundary. No policy implementation, provider request, selector/retrieval change, or later phase is authorized, and architecture remains unfrozen.
+This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events under the approved 180-day policy, so each was `DISCOVERY INSUFFICIENT`; the mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. A4.3R0 later found that broader sparse policies would make PostHog's raw set sufficient but would not change the frozen selector's invalid `3,2,7` selection; Stripe remains insufficient under defensible qualitative safeguards. A4.3R1 tested exactly one fresh retrieval change—a fixed source-quality/novelty `systemPrompt`—and Stripe again had only two qualifying raw events, so it early-stopped before PostHog. A4.4 freezes the resulting small architecture direction: Exa remains primary discovery, the selector becomes prioritization/light dedupe rather than final evidence approval, and verification can use one official-domain fallback only to fill missing slots. A4.5 must validate that unimplemented fallback before Phase A exit. No production implementation, provider request, selector/retrieval change, or later phase is authorized.
 
 ## Source-of-truth hierarchy
 
@@ -336,6 +336,14 @@ The separately authorized A4.3R1 spike tested only whether adding one fixed syst
 
 A4.3R1 made **1** request with zero retries; cumulative Exa requests are **6**. This single fresh sample does not prove that the instruction caused the result, but it does not support adopting the retrieval repair. Historical A4.3 and A4.3R0 remain unchanged. See `docs/PHASE_A_RETRIEVAL_REPAIR.md`; stop for project-owner review before any additional retrieval, policy, selector, or architecture work.
 
+### A4.4 — Phase A architecture freeze
+
+**2026-09-09 A4.4 decision: architecture direction frozen; Phase A exit remains pending A4.5.** The single-pass shape—one generic Exa search followed by source-blind selection of the final three—is rejected as insufficiently reliable. Exa is retained as the primary discovery provider because A4.1 showed useful raw discovery, but its broad pass is not enough to guarantee three defensible events.
+
+The approved ceiling is one broad Exa discovery request, candidate prioritization/light dedupe, prioritized exact-source verification, and only when fewer than three valid distinct events survive, one conditional official-domain/first-party Exa fallback to backfill missing slots. The hard limit is **two discovery requests per company**. The selector is no longer treated as final evidence approval; verification controls eligibility. Recency remains ≤90 days preferred and 91–180 days fallback, with an honest insufficient-evidence state after the bounded path is exhausted.
+
+No crawler, provider waterfall, third search, Tavily fallback, embeddings/vector database, database, reputation engine, elaborate event taxonomy, LangChain/LangGraph, runtime agents, evidence graph, complex scoring, arbitrary retry, or unbounded backfill is approved. A4.5 is the single remaining feasibility test: at most one official-domain-focused Stripe fallback request, with an exact contract to be approved before execution. It was not run here. See `docs/PHASE_A_ARCHITECTURE_FREEZE.md`.
+
 ## Phase A deliverables
 
 - bounded benchmark code/diagnostic only;
@@ -398,7 +406,7 @@ If a provider fails these materially, reject it quickly.
 ## Phase A — V2 reset + viability benchmark
 Prove the retrieval/research approach on real companies. No polished UI.
 
-**Exit:** provider architecture is GO, NO-GO, or BLOCKED with evidence.
+**Exit:** A4.5 either demonstrates the one official-domain fallback within the frozen two-search ceiling, or returns the architecture for reassessment. No production implementation begins before that result.
 
 ## Phase B — Minimal production snapshot pipeline
 Build only what Phase A proved useful:
@@ -503,19 +511,11 @@ Reuse is allowed only when the V2 task benefits materially and the reused code d
 
 ---
 
-# 11. Immediate build sequence after plan approval
+# 11. Current sequence after A4.4
 
-1. Establish this documentation baseline in the V2 repo.
-2. Approve Phase A only.
-3. Give the coding agent a **full-context, self-contained Phase A brief** covering the product, prior attempts, failures, definition of done, and the specific Gemini smoke/benchmark task.
-4. Review its actual diff and Phase Completion Report.
-5. Run/inspect the required live verification and source links.
-6. Decide Gemini GO / NO-GO / BLOCKED.
-7. Only if NO-GO/BLOCKED for a material reason, authorize the Exa fallback benchmark.
-8. Freeze the first provider that passes.
-9. Phase B production endpoint.
-10. Phase C UI.
-11. Phase D deployment and production verification.
-12. Phase E final review and submission.
+1. Obtain a new full-context A4.5 authorization defining one official-domain-focused fallback request for Stripe.
+2. Run at most that one request; inspect exact destinations and decide whether it adds one valid distinct ≤180-day signal.
+3. If it passes, freeze the bounded Phase A architecture for implementation planning; if it fails, stop for reassessment without adding retrieval layers.
+4. Only after a successful A4.5 and explicit approval, begin the Phase B production endpoint, then UI, deployment, and final review.
 
-No application implementation begins until the project owner explicitly approves Phase A.
+No production application implementation begins until the project owner explicitly approves it after Phase A exit.

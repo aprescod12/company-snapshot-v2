@@ -15,7 +15,7 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`; A4.3R0 remains `NO POLICY CHANGE YET`; and the bounded A4.3R1 retrieval repair is `RETRIEVAL REPAIR FAIL`.**
+**Phase A’s architecture direction is frozen, but its exit remains pending A4.5. A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`; A4.3R0 remains `NO POLICY CHANGE YET`; and A4.3R1 remains `RETRIEVAL REPAIR FAIL`.**
 
 The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
 
@@ -27,7 +27,9 @@ A4.3 reused that NVIDIA result and then ran the frozen discovery → selector pi
 
 A4.3R0 used no provider access and preserved that historical result. It found that PostHog's supported first-party rank 9 event, about 182 days old, would make the raw set sufficient under a bounded sparse fallback—but the frozen selector would still choose invalid rank 7 instead. Stripe's roughly 272-day-old rank 9 event was returned through a recent retrospective explainer and remains ineligible under defensible safeguards. Because neither broader window repairs the actual pipeline and the evidence is sensitive to cutoff choice, the reassessment recommends no change yet. A separate decision about evidence-aware source verification/backfill remains required.
 
-A4.3R1 then made one new Stripe request with the A4.1 retrieval contract unchanged except for one fixed source-quality/novelty `systemPrompt`. Exact-destination review again found only two qualifying distinct ≤180-day events. The frozen selector selected `2,1,3`, including two rejected candidates, but raw insufficiency triggered the required early stop before PostHog. The repair is therefore not supported; A4.3R1 made 1 request with zero retries and cumulative Exa requests are 6. No policy, selector, provider, or architecture change follows from this result.
+A4.3R1 then made one new Stripe request with the A4.1 retrieval contract unchanged except for one fixed source-quality/novelty `systemPrompt`. Exact-destination review again found only two qualifying distinct ≤180-day events. The frozen selector selected `2,1,3`, including two rejected candidates, but raw insufficiency triggered the required early stop before PostHog. The repair is therefore not supported; A4.3R1 made 1 request with zero retries and cumulative Exa requests are 6.
+
+A4.4 freezes the smallest evidence-supported direction: Exa remains the primary discovery provider, but the one-search → selector → final-three shape is rejected. The future path is one broad search, candidate prioritization/light dedupe, exact-source verification until three signals survive, and only then one official-domain fallback to fill missing slots. The hard ceiling is two discovery requests per company; if that bounded path still fails, the product must return honest insufficient evidence. A4.5 must test the fallback with at most one new Stripe request before implementation may begin.
 
 Current provider decision sequence:
 
@@ -38,7 +40,8 @@ Current provider decision sequence:
 5. Fixed A4.1 discovery → A4.2 selector representative benchmark — `A4.3 SIGNAL BENCHMARK FAIL` after Stripe and PostHog were both discovery-insufficient; mandatory early stop at a 3/5 coverage ceiling.
 6. Zero-provider A4.3R0 recency reassessment — `NO POLICY CHANGE YET`; broader windows do not repair selected-set validity.
 7. Bounded A4.3R1 fixed-prompt retrieval repair — `RETRIEVAL REPAIR FAIL` at Stripe raw sufficiency; PostHog was not requested.
-8. Stop for project-owner review. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
+8. A4.4 architecture freeze — one broad Exa request plus at most one conditional official-domain fallback; selector is a prioritizer/deduper, not evidence approval.
+9. A4.5 final one-request fallback feasibility test remains required; `deep-lite`, Tavily, and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
 
