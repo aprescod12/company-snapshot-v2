@@ -539,6 +539,35 @@ Implementation and verification date: 2026-09-09
 
 Result: **`B1 DETERMINISTIC IMPLEMENTATION COMPLETE`; `B1 LIVE IDENTITY GATE PASS`; `B1 COMPANY TARGETING / RESOLUTION APPROVED FOR PRODUCTION INTEGRATION`**. The first live Mercury response exposed the narrow title-parser defect; the approved rerun retained all request/schema/identity boundaries and safely clarified the two disclosed Mercury entities. The one authorized Stripe request then positively resolved a clear name with exact first-party grounding, no separate identity search, and preserved raw discovery. B2 broad discovery, verification/backfill, synthesis, endpoint/UI, deployment, and all later-phase work remain unstarted. See `docs/PHASE_B1_IDENTITY_GATE.md`.
 
+### B2 — production broad discovery
+
+Implementation and live-validation date: 2026-09-09
+
+| Measure | Observed result |
+| --- | --- |
+| Production scope | `src/discovery/exaBroadDiscovery.mjs` owns the one-search raw-discovery contract; `src/discovery/discoverCompany.mjs` prepares B1 input, performs one request, confirms identity, then exposes a selector queue only when resolved. No production module imports historical `scripts/`. |
+| Request / identity contract | Signal-oriented A4.1/B1 query, `auto`, 10 results, highlights, exact three-field identity schema, `stream: false`; no filters, prompt, fallback, retry, polling, or second Search. Unambiguous output requires exact field-specific grounding for both identity fields. |
+| Selector extension | Full valid ordered representatives are returned as `prioritized`; `selected` remains exactly `prioritized.slice(0, 3)`. Existing rank, recency, provenance, and dedup rules are unchanged. Untitled raw candidates parse but remain ineligible. |
+| Pre-live local verification | Syntax checks passed. B2-focused suites passed 38/38; targeting 10/10; selector 25/25; Phase A discovery 14/14; B1 gate 12/12; complete suite 123/123; `git diff --check` passed. |
+| Live authorization / hygiene | `.env` was confirmed ignored, untracked, and unstaged without inspection. Free Starter attestation was supplied. Starting cumulative Exa count: 10; maximum B2 requests: 2; retries: 0. |
+| Live Stripe name | Exactly 1 request, 0 retries. Returned `clarification_needed` / `insufficient_identity_evidence`. Because identity did not resolve, no raw candidates, grounding, prioritized/selected queue, aggregates, latency, or cost were exposed or retained. |
+| Stop / accounting | The required name positive gate failed, so `stripe.com` was not requested, no source was opened, no retry or patch/replay occurred, and no provider root cause is inferred. B2 requests: 1; cumulative Exa requests: 11. |
+| Independent review | Pre-live review found and corrected missing field-specific unambiguous grounding enforcement and the safe missing-ambiguity clarification path. Post-live review confirmed safe quarantine/no candidate leak and classified the result as a name-case failure rather than `B2 PARTIAL / REASSESS`. |
+
+Result: **`B2 FAIL`**. The automated implementation is retained, but B2 production broad discovery is not approved because its sole authorized Stripe-name call did not resolve identity or produce a queue. No B3 verification/backfill, endpoint, UI, deployment, or later work began. See `docs/PHASE_B2_BROAD_DISCOVERY.md`.
+
+### B2R0 — zero-provider-call diagnostic audit
+
+| Measure | Observed result |
+| --- | --- |
+| Provider activity | Exa 0; other providers 0; retries 0; cumulative Exa experimental requests remain 11. |
+| Request/schema parity | Fixed-date B2 body structurally equals the B1 Stripe positive-control body: exact query, `auto`, 10, highlights, exact three-field schema, `stream: false`, and no provider-visible extras. |
+| Parsing/grounding/handoff | Complete-schema identity parsing and field-specific citation extraction match B1; exact per-field URLs are combined without rewrite before the same B1 confirmation function. Missing-only `ambiguous` is an explicit B2 safe-clarification policy difference: B1's historical parser format-fails it. |
+| Diagnostic observability | Local smoke fixture tests verify transient identity fields, per-field grounding URLs/counts, B1 state/reason, raw-result aggregates, latency, and provider-reported cost/null. Default production clarification remains queue-free and the diagnostic summary contains no candidates/highlights/raw payload. |
+| Result | `AUDIT INCONCLUSIVE`: the original response was intentionally not retained, so no local check can prove whether missing ambiguity, ambiguity, invalid identity data, grounding/corroboration, or provider variability caused the live clarification. |
+
+No B2 approval, rerun, B3, source verification, fallback, endpoint, UI, deployment, or later work is authorized by B2R0.
+
 ## Phase C
 _Not yet run._
 

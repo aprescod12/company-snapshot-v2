@@ -491,15 +491,14 @@ export function selectSignals(candidates, context) {
   }
 
   representatives.sort(comparePreference);
-  const selectedItems = representatives.slice(0, 3);
-  const selectedInputIndexes = new Set(selectedItems.map((item) => item.inputIndex));
-
-  const selected = selectedItems.map((item) => ({
+  const prioritized = representatives.map((item) => ({
     ...cloneCandidate(item.candidate),
     recencyBucket: item.recencyBucket,
     sourceClass: item.sourceClass,
     duplicateClusterId: item.duplicateClusterId,
   }));
+  const selected = prioritized.slice(0, 3);
+  const selectedInputIndexes = new Set(representatives.slice(0, 3).map((item) => item.inputIndex));
 
   const evaluated = candidates.map((candidate, inputIndex) => {
     const metadata = metadataByInputIndex.get(inputIndex);
@@ -520,5 +519,5 @@ export function selectSignals(candidates, context) {
     };
   });
 
-  return { selected, evaluated };
+  return { prioritized, selected, evaluated };
 }

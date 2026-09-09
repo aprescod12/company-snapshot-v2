@@ -265,10 +265,27 @@ test("exactly three unique usable candidates are selected when available", () =>
   );
 
   assert.equal(result.selected.length, 3);
+  assert.deepEqual(result.selected, result.prioritized.slice(0, 3));
+  assert.equal(result.prioritized.length, 4);
+  assert.equal(result.prioritized[3].rank, 4);
   assert.equal(
     result.evaluated.filter((entry) => entry.reason === SELECTION_REASON.LOWER_PRIORITY).length,
     1,
   );
+});
+
+test("untitled candidates remain evaluated but do not enter the priority queue", () => {
+  const result = selectSignals(
+    [
+      candidate({ rank: 1, title: null, url: "https://acme.test/untitled" }),
+      candidate({ rank: 2, title: "Beacon partnership signed", url: "https://acme.test/beacon" }),
+    ],
+    CONTEXT,
+  );
+
+  assert.deepEqual(result.prioritized.map((entry) => entry.rank), [2]);
+  assert.equal(result.evaluated[0].reason, SELECTION_REASON.INVALID);
+  assert.deepEqual(result.selected, result.prioritized.slice(0, 3));
 });
 
 test("fewer than three candidates are returned honestly", () => {
