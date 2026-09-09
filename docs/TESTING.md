@@ -568,6 +568,25 @@ Result: **`B2 FAIL`**. The automated implementation is retained, but B2 producti
 
 No B2 approval, rerun, B3, source verification, fallback, endpoint, UI, deployment, or later work is authorized by B2R0.
 
+### B2R1 — single Stripe-name diagnostic rerun
+
+Live verification date: 2026-09-09
+
+| Measure | Observed result |
+| --- | --- |
+| Provider accounting | Starting cumulative Exa requests: 11; B2R1 requests: 1; retries: 0; ending cumulative requests: 12 |
+| B2 decision | `clarification_needed` / `insufficient_identity_evidence` |
+| Structured identity | `Stripe, Inc.` / `stripe.com` / `ambiguous: true` |
+| Resolved-name grounding | 3 exact URLs |
+| Official-domain grounding | 5 exact URLs |
+| B1 decision | `clarification_needed` / `insufficient_identity_evidence` |
+| Discovery aggregates | 10 raw results; 9 dated; 10 highlight-bearing; 5 unique domains |
+| Latency / returned cost | 3,638 ms / $0.007 |
+| Queue counts | Not applicable because identity did not resolve |
+| Classification | `B2R1 REPEAT SAFE FAILURE — CAUSE OBSERVED` |
+
+The observed immediate cause was `ambiguous: true`, not missing identity fields or missing field-specific grounding. The B1 boundary therefore safely refused to resolve the company. No retry, `stripe.com` request, other company, fallback, source verification, code patch, B3, or later work occurred. This single result does not approve B2 or decide whether occasional safe clarification is acceptable production UX.
+
 ## Phase C
 _Not yet run._
 

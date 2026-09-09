@@ -55,3 +55,26 @@ The later B2R0 audit made **0** provider requests; cumulative Exa experimental r
 One deliberate B2 safety-policy difference remains: a response missing only `ambiguous` is normalized as `ambiguous: undefined` and B1 returns `clarification_needed` / `insufficient_identity_evidence`; B1's historical diagnostic parser format-fails that malformed schema. This safe B2 quarantine was explicitly required in the original B2 contract. It could explain the prior terse live result, but the response was deliberately not retained, so the audit cannot establish that it occurred or identify another provider cause. B2R0 therefore concludes **`AUDIT INCONCLUSIVE`**, not provider variability proven and not a B2 production approval.
 
 The smoke harness now calls the explicit smoke-only discovery path, which shares the one production execution but returns a transient sanitized diagnostic summary only to that harness. On a future separately authorized call, it will report parsed identity fields (including missing `ambiguous` as `null`), exact per-field grounding URLs and counts, B1 confirmation state/reason, raw-result aggregates, latency, and provider-reported cost or `null`. It never persists or dumps a raw provider response, key, highlights, or unresolved candidate queue. The production-facing `discoverCompany()` API has no diagnostic observer and its clarification remains exactly `{ state, reason }`.
+
+## B2R1 — single Stripe-name diagnostic rerun
+
+The separately authorized B2R1 rerun made exactly one Stripe-name Exa request and zero retries. The sanitized response was:
+
+| Measure | Observed result |
+| --- | --- |
+| B2 decision | `clarification_needed` / `insufficient_identity_evidence` |
+| Resolved company name | `Stripe, Inc.` |
+| Official domain | `stripe.com` |
+| Ambiguous | `true` |
+| Resolved-name grounding count | 3 |
+| Resolved-name grounding URLs | `https://stripe.com/newsroom/news/stripe-helps-meta-muse-shop-with-link`; `https://www.rte.ie/news/business/2026/0909/1590856-bank-of-ireland-grows-partnership-deal-with-stripe/`; `https://onlinestorenews.com/stripes-optimized-checkout-suite-is-reshaping-how-merchants-think-about-payment-stacks-in-2026/` |
+| Official-domain grounding count | 5 |
+| Official-domain grounding URLs | `https://stripe.com/newsroom/news/stripe-helps-meta-muse-shop-with-link`; `https://www.rte.ie/news/business/2026/0909/1590856-bank-of-ireland-grows-partnership-deal-with-stripe/`; `https://onlinestorenews.com/stripes-new-stablecoin-settlement-is-rewriting-cross-border-checkout/`; `https://stripe.com/blog/reduce-fx-costs-with-stripe`; `https://onlinestorenews.com/stripes-optimized-checkout-suite-is-reshaping-how-merchants-think-about-payment-stacks-in-2026/` |
+| B1 decision | `clarification_needed` / `insufficient_identity_evidence` |
+| Discovery aggregates | 10 raw results; 9 dated; 10 highlight-bearing; 5 unique domains |
+| Latency / returned cost | 3,638 ms / $0.007 |
+| Queue counts | Not applicable because identity did not resolve |
+
+The classification is **`B2R1 REPEAT SAFE FAILURE — CAUSE OBSERVED`**. The immediate cause is the provider-returned `ambiguous: true`: identity fields and their field-specific grounding were present, but B1 correctly refused to resolve an explicitly ambiguous result. This does not prove deterministic integration success, approve B2, or decide whether occasional safe clarification is acceptable production UX.
+
+Starting cumulative Exa requests were 11; B2R1 used 1 request with 0 retries; ending cumulative requests are 12. After the response, provider activity stopped. No `stripe.com` request, other company, official-domain fallback, source verification, code patch, B3, or later work occurred. No raw provider JSON, full highlights, credentials, or temporary response dump was persisted.
