@@ -171,12 +171,12 @@ function parseCandidate(value, index) {
   if (!isPlainObject(value)) {
     throw new Error(`formatting: results[${index}] was not an object.`);
   }
-  requireNonEmptyString(value.title, `results[${index}].title`);
   requireNonEmptyString(value.url, `results[${index}].url`);
   if (!isHttpUrl(value.url)) {
     throw new Error(`formatting: results[${index}].url was not an exact http(s) URL.`);
   }
 
+  const title = optionalString(value.title, `results[${index}].title`);
   const publishedDate = optionalString(value.publishedDate, `results[${index}].publishedDate`);
   const author = optionalString(value.author, `results[${index}].author`);
   let highlights = [];
@@ -194,7 +194,7 @@ function parseCandidate(value, index) {
     });
   }
 
-  return { rank: index + 1, title: value.title, url: value.url, publishedDate, author, highlights };
+  return { rank: index + 1, title, url: value.url, publishedDate, author, highlights };
 }
 
 export function parseSearchResponse(payload, latencyMs = 0) {
@@ -233,7 +233,7 @@ export function buildDisplayHtml(result) {
         : "";
       return `<article>
         <p class="rank">Result ${candidate.rank}</p>
-        <h2>${escapeHtml(candidate.title)}</h2>
+        <h2>${escapeHtml(candidate.title ?? "Untitled source")}</h2>
         <p><a href="${escapeHtml(candidate.url)}" target="_blank" rel="noreferrer">${escapeHtml(candidate.url)}</a></p>
         <p class="meta"><span>Provider publishedDate: ${escapeHtml(candidate.publishedDate ?? "unknown")}</span>${author}</p>
         <h3>Returned highlights</h3>

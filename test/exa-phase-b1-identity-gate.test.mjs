@@ -117,6 +117,23 @@ test("the gate sends false identity through exact relevant grounding into B1", a
   });
 });
 
+test("an untitled valid raw result still reaches identity parsing, grounding, and B1", async () => {
+  const payload = providerPayload();
+  delete payload.results[1].title;
+  const result = await runIdentityGate({
+    company: "Stripe",
+    apiKey: "test-key",
+    now: NOW,
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => payload }),
+  });
+  assert.equal(result.providerResult.discovery.candidates[1].title, null);
+  assert.equal(result.evaluation.identityResult.status, "resolved");
+  assert.deepEqual(result.providerResult.groundingByField.officialDomain, [
+    "https://stripe.com/about",
+    "https://stripe.com/legal",
+  ]);
+});
+
 test("unambiguous output without both field-specific valid grounding fails closed", async () => {
   const payload = providerPayload();
   payload.output.grounding = [{ field: "officialDomain", citations: [{ url: "https://stripe.com", title: "Stripe" }], confidence: "high" }];

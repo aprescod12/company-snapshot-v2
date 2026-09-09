@@ -247,8 +247,31 @@ test("missing or whitespace-only optional values render as unknown or absent", (
   assert.doesNotMatch(html, /Author:/);
 });
 
+test("raw result titles are optional metadata while valid URLs remain required", () => {
+  for (const title of [undefined, null, ""]) {
+    const result = parseSearchResponse(
+      providerPayload({ results: [{ title, url: "https://example.test/untitled", highlights: [] }] }),
+    );
+    assert.equal(result.candidates[0].title, null);
+  }
+
+  const titled = parseSearchResponse(
+    providerPayload({ results: [{ title: "Provider title", url: "https://example.test/titled", highlights: [] }] }),
+  );
+  assert.equal(titled.candidates[0].title, "Provider title");
+  assert.match(buildDisplayHtml(titled), /Provider title/);
+
+  const untitled = parseSearchResponse(
+    providerPayload({ results: [{ url: "https://example.test/untitled", highlights: [] }] }),
+  );
+  assert.match(buildDisplayHtml(untitled), /Untitled source/);
+});
+
 test("malformed, unsupported, and whitespace-padded result URLs fail closed", () => {
   for (const sourceUrl of [
+    undefined,
+    null,
+    "",
     "not a URL",
     "javascript:alert(1)",
     "ftp://example.test/source",
@@ -259,7 +282,7 @@ test("malformed, unsupported, and whitespace-padded result URLs fail closed", ()
     });
     assert.throws(
       () => parseSearchResponse(payload),
-      /results\[0\]\.url was not an exact http\(s\) URL/,
+      /results\[0\]\.url was not (a non-empty string|an exact http\(s\) URL)/,
     );
   }
 });
@@ -272,8 +295,8 @@ test("invalid raw result field shapes fail closed", () => {
     /results\[0\] was not an object/,
   );
   assert.throws(
-    () => parseSearchResponse({ results: [{ title: "", url: "https://example.test" }] }),
-    /title was not a non-empty string/,
+    () => parseSearchResponse({ results: [{ title: 42, url: "https://example.test" }] }),
+    /title was not a string or null/,
   );
   assert.throws(
     () =>

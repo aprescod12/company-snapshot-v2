@@ -531,12 +531,13 @@ Implementation and verification date: 2026-09-09
 | Domain identity | Retains the submitted hostname; supplied identity evidence must corroborate that same root/subdomain or clarification is returned |
 | Deceptive domains | Exact-root/subdomain comparison rejects prefix and suffix impostors such as `stripe.com.example.test` and `notstripe.com` |
 | Mercury regression | `Mercury` plus ambiguous or non-explicitly-unambiguous `shipmercury.com` evidence returns `clarification_needed`; no company-specific production branch exists; semantic resolution remains pending the live gate |
-| Provider activity | Exa 1 (Mercury live identity gate); Gemini 0; Tavily 0; Groq 0; other external API requests 0; cumulative Exa experimental requests are 8 |
-| Live validation | One authorized Mercury request, zero retries. The returned normal result at index 9 lacked a non-empty title; strict raw-candidate parsing stopped before identity content/grounding, raw-result evaluation, metadata capture, or source-page inspection. Stripe was not requested. |
-| Gate decision | `B1 LIVE IDENTITY GATE FAIL — FORMAT BLOCKER`; no safe Mercury identity result was established, so no Stripe request was permitted |
-| Local verification | Gate syntax checks passed; focused gate tests 11/11; targeting tests 10/10; full `node --test test/*.test.mjs` 107/107; `git diff --check` passed |
+| Provider activity | Exa 2 (Mercury live identity gate: first format blocker, then one approved rerun); Gemini 0; Tavily 0; Groq 0; other external API requests 0; cumulative Exa experimental requests are 9 |
+| Parser correction | Shared raw Search parser now treats absent/null/empty title as `null`; valid non-empty exact HTTP(S) URL remains mandatory. UI uses `Untitled source` only as a presentation fallback. |
+| Live validation | Mercury rerun: 10 results, all dated/highlighted, 8 unique domains, 3,083 ms, $0.007. Provider named the fintech and Mercury Systems entities, set `ambiguous: true`, and B1 returned `clarification_needed`; exact Mercury fintech sources were opened, while the exact Yahoo Mercury Systems destination was rate-limited. Stripe was not requested. |
+| Gate decision | `B1 LIVE IDENTITY GATE SAFE AMBIGUITY`; no entity was silently accepted |
+| Local verification | Parser tests 14/14; gate tests 12/12; targeting tests 10/10; full `node --test test/*.test.mjs` 109/109; `git diff --check` passed |
 
-Result: **`B1 DETERMINISTIC IMPLEMENTATION COMPLETE`; `B1 LIVE IDENTITY GATE FAIL — FORMAT BLOCKER`**. The gate harness preserves the frozen A4.1 request exactly except for the approved minimal identity schema, requires field-specific valid provider grounding before accepting an unambiguous identity, and requires explicit post-Mercury safety attestation before Stripe. The live Mercury response failed the raw-result shape boundary, so it did not establish identity behavior and no further provider activity was allowed. B2 broad discovery, verification/backfill, synthesis, endpoint/UI, deployment, and all later-phase work remain unstarted. See `docs/PHASE_B1_IDENTITY_GATE.md`.
+Result: **`B1 DETERMINISTIC IMPLEMENTATION COMPLETE`; `B1 LIVE IDENTITY GATE SAFE AMBIGUITY`**. The first live Mercury response exposed the narrow title-parser defect; the approved rerun retained all request/schema/identity boundaries and safely clarified the two disclosed Mercury entities. Stripe, B2 broad discovery, verification/backfill, synthesis, endpoint/UI, deployment, and all later-phase work remain unstarted. See `docs/PHASE_B1_IDENTITY_GATE.md`.
 
 ## Phase C
 _Not yet run._
