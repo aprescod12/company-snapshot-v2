@@ -388,6 +388,44 @@ Pre-live independent review found that the original selector used permissive `Da
 
 Result: **`A4.2 PRE-LIVE READY`**. This is local selector viability only. NVIDIA behavior, source support, factual event dates, live variability, and representative-company coverage remain untested. No source verification, synthesis, `deep-lite`, benchmark, Tavily, Phase B, UI, or deployment work occurred.
 
+### Exa A4.2 — NVIDIA live selector smoke
+
+Live verification date: 2026-09-08
+
+| Measure | Observed result |
+| --- | --- |
+| Baseline | `8abd43110dbd968b35f95245f3c504f2064db145` |
+| Request contract | Exact A4.1 NVIDIA request: `POST /search`, `auto`, 10 results, `contents.highlights: true`; no schema, synthesis, date filter, alternate query/mode/provider, or second model |
+| Request / retries | 1 / 0 |
+| Latency / returned cost | 1,839 ms / $0.007 total |
+| Aggregate raw set | 10 results; 8 dated; 10 highlight-bearing; 9 unique domains |
+| Selector result | Exactly 3: ranks `1,3,5` |
+| Selector metadata | Rank 1 `RECENT/FIRST_PARTY`; rank 3 `RECENT/FIRST_PARTY`; rank 5 `RECENT/FIRST_PARTY`; no selector duplicate clusters |
+| Pre-live verification | Six syntax checks passed; discovery 13/13; selector 24/24; smoke harness 5/5; full suite 70/70; `git diff --check` passed |
+| Post-live verification | Same syntax, focused, full-suite, and diff checks passed without a provider request |
+| Request totals | A3: 1; A4.1: 1; A4.2: 1; cumulative Exa: 3 |
+
+All ten exact returned destinations were reviewed without substitute-source search. Manual classifications were:
+
+| Rank | Human result | Event group / disposition |
+| --- | --- | --- |
+| 1 | `SUPPORTED`, material first-party event dated 2026-09-03 | Hugging Face acquisition; qualifies; selected |
+| 2 | `SUPPORTED` SEC filing dated 2026-09-02 | Hugging Face acquisition; duplicate of rank 1 |
+| 3 | `SUPPORTED`, material first-party event dated 2026-09-03 | PAIR / RTX Spark; qualifies; selected |
+| 4 | `SUPPORTED`, material first-party event dated 2026-08-26 | AWS expansion; qualifies; unselected |
+| 5 | `SUPPORTED`, material first-party event dated 2026-08-31 | MediaTek partnership/investment; qualifies; selected |
+| 6 | `SUPPORTED` secondary coverage dated 2026-09-07 | PAIR / RTX Spark; weaker duplicate of rank 3 |
+| 7 | `PARTIAL` paywalled excerpt dated 2026-09-08 | Acquisition-related antitrust analysis, not a separately established regulatory event; reject |
+| 8 | `PARTIAL` derivative/repackaged page dated 2026-09-08 | Groq deployment; reject |
+| 9 | `PARTIAL` weak mixed-topic derivative page dated 2026-09-08 | AGI / Q2; reject |
+| 10 | `SUPPORTED` material secondary page dated 2026-07-28 | Amkor packaging partnership; qualifies; unselected |
+
+Five distinct events qualified at ranks `1,3,4,5,10`; all were within 90 days. Rank 4's captured provider date was absent, so the selector classified it `UNKNOWN/FIRST_PARTY`; rank 5 was `RECENT/FIRST_PARTY`. The frozen recency-first comparator therefore placed rank 5 ahead of rank 4 before original Exa rank was considered. Rank 4 remained structurally valid and distinct. Its August 26 page date was learned only during manual review and is intentionally outside the selector's source-blind input contract.
+
+Independent post-live review agreed that ranks `1,3,5` were correct-entity, real, material, supported by their exact first-party destinations, within 90 days, and distinct. It also confirmed that rank 4 was not obviously stronger than rank 5 and that rank 10 appropriately lost on source class. The reviewer identified one non-blocking limitation: human duplicate groups `1/2` and `3/6` received no selector cluster IDs. That did not change this selected set because the lower-priority duplicate pages were not selected.
+
+Result: **`SELECTOR PASS`**. This is one-company evidence only. Representative-company coverage, semantic duplicate recall, source-verification architecture, synthesis, the endpoint, frontend, deployment, and production architecture remain untested. No additional provider request was made during post-live review or verification, and representative testing did not begin.
+
 ## Phase B
 _Not yet run._
 
