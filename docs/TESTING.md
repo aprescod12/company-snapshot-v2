@@ -531,11 +531,12 @@ Implementation and verification date: 2026-09-09
 | Domain identity | Retains the submitted hostname; supplied identity evidence must corroborate that same root/subdomain or clarification is returned |
 | Deceptive domains | Exact-root/subdomain comparison rejects prefix and suffix impostors such as `stripe.com.example.test` and `notstripe.com` |
 | Mercury regression | `Mercury` plus ambiguous or non-explicitly-unambiguous `shipmercury.com` evidence returns `clarification_needed`; no company-specific production branch exists; semantic resolution remains pending the live gate |
-| Provider activity | Exa 0; Gemini 0; Tavily 0; Groq 0; other external API requests 0; cumulative Exa experimental requests remain 7 |
-| Live validation | Not authorized or run; the separate Mercury/Stripe live identity gate remains pending |
-| Local verification | `node --check src/targeting/companyTarget.mjs`; `node --check test/company-target.test.mjs`; focused `node --test test/company-target.test.mjs` 10/10; full `node --test test/*.test.mjs` 96/96; `git diff --check` passed |
+| Provider activity | Exa 1 (Mercury live identity gate); Gemini 0; Tavily 0; Groq 0; other external API requests 0; cumulative Exa experimental requests are 8 |
+| Live validation | One authorized Mercury request, zero retries. The returned normal result at index 9 lacked a non-empty title; strict raw-candidate parsing stopped before identity content/grounding, raw-result evaluation, metadata capture, or source-page inspection. Stripe was not requested. |
+| Gate decision | `B1 LIVE IDENTITY GATE FAIL — FORMAT BLOCKER`; no safe Mercury identity result was established, so no Stripe request was permitted |
+| Local verification | Gate syntax checks passed; focused gate tests 11/11; targeting tests 10/10; full `node --test test/*.test.mjs` 107/107; `git diff --check` passed |
 
-Result: **`B1 DETERMINISTIC IMPLEMENTATION COMPLETE`**. The exit correction removed an over-strict lexical company-name/domain eligibility rule and added explicit unambiguity for name targets; it also restored punctuated ordinary company names to name classification. Earlier independent review found unsafe contradictory domain-evidence handling and acceptance of non-public hostname anchors; those corrections remain intact. B2 broad discovery, verification/backfill, synthesis, endpoint/UI, deployment, and all live identity validation remain unstarted.
+Result: **`B1 DETERMINISTIC IMPLEMENTATION COMPLETE`; `B1 LIVE IDENTITY GATE FAIL — FORMAT BLOCKER`**. The gate harness preserves the frozen A4.1 request exactly except for the approved minimal identity schema, requires field-specific valid provider grounding before accepting an unambiguous identity, and requires explicit post-Mercury safety attestation before Stripe. The live Mercury response failed the raw-result shape boundary, so it did not establish identity behavior and no further provider activity was allowed. B2 broad discovery, verification/backfill, synthesis, endpoint/UI, deployment, and all later-phase work remain unstarted. See `docs/PHASE_B1_IDENTITY_GATE.md`.
 
 ## Phase C
 _Not yet run._
