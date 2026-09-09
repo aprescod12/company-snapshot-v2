@@ -426,6 +426,38 @@ Independent post-live review agreed that ranks `1,3,5` were correct-entity, real
 
 Result: **`SELECTOR PASS`**. This is one-company evidence only. Representative-company coverage, semantic duplicate recall, source-verification architecture, synthesis, the endpoint, frontend, deployment, and production architecture remain untested. No additional provider request was made during post-live review or verification, and representative testing did not begin.
 
+### Exa A4.3 — representative signal-pipeline benchmark
+
+Implementation and live verification date: 2026-09-08
+
+| Measure | Contract and observed result |
+| --- | --- |
+| Baseline | `9d9cdc850de8b21b85ae1733ee2ea516664c1885` on `main`, matching `origin/main`; clean worktree/index before changes or provider access |
+| Ordinary cohort | NVIDIA, Stripe, PostHog, Canva, `notion.so`; NVIDIA's completed A4.2 `SELECTOR PASS` reused without a request |
+| New-case order | Stripe → PostHog → Canva → `notion.so`; human-approved domains used only as evaluation fixtures |
+| Request contract | Exact A4.1 `POST /search`, generic signal query, `auto`, 10 results, highlights enabled; only the exact company input changes |
+| Harness boundary | One case per invocation; one `requestCandidates()` call; direct in-memory `selectSignals()` handoff; compact metadata only; no retry, persistence, batch/parallel path, direct source fetch, second model, or disallowed company |
+| Coverage gate | At least 4/5 cohort passes including reused NVIDIA; `SELECTOR FAIL` and `DISCOVERY INSUFFICIENT` count as signal-path failures; any `BLOCKED` stops for review |
+| Early-stop gate | Stop after two new failures/insufficiencies because maximum possible coverage becomes 3/5 |
+| Pre-live checks | Five syntax checks passed; discovery 13/13; selector 24/24; A4.2 harness 5/5; A4.3 harness 6/6; focused total 48/48; full suite 76/76; `git diff --check` passed |
+| Requests | Stripe 1, PostHog 1, Canva 0, `notion.so` 0, NVIDIA 0; A4.3 total 2; retries 0; cumulative Exa total 5 |
+
+Actual live results:
+
+| Company | Raw-set and selector result | Manual qualifying count | Outcome |
+| --- | --- | --- | --- |
+| NVIDIA | Reused A4.2 result; selected `1,3,5`; no A4.3 request | 5 qualifying distinct events, all ≤90 days | `SELECTOR PASS` |
+| Stripe | 2,314 ms; $0.007; 10 raw, 10 dated, 10 highlighted, 4 domains; selected `2,1,4`; no selector clusters | 2 total: rank 2 ≤90 days and rank 3 in 91–180-day fallback | `DISCOVERY INSUFFICIENT` |
+| PostHog | 2,769 ms; $0.007; 10 raw, 7 dated, 10 highlighted, 6 domains; selected `3,2,7`; no selector clusters | 2 total: ranks 2 and 3, both ≤90 days | `DISCOVERY INSUFFICIENT` |
+| Canva | Not run after mathematical-failure stop | Not evaluated | Not evaluated |
+| notion.so | Not run after mathematical-failure stop | Not evaluated | Not evaluated |
+
+All returned Stripe and PostHog candidates were inspected at their exact destinations without replacement-source search. Complete per-rank entity, event, materiality, accessibility, support, destination-date, duplicate-group, and qualification classifications are recorded in `docs/PHASE_A_SIGNAL_BENCHMARK.md`.
+
+Human review grouped Stripe ranks `4/5/8` as checkout-optimization overlap and PostHog ranks `1/5` as aggregate product-update overlap; the selector assigned no clusters in either set. No missed group placed multiple duplicate members in a selected three, so the misses were nonconsequential for these captures. Independent per-company and final reviews agreed with the classifications, duplicate findings, insufficiency labels, coverage arithmetic, and early stop.
+
+Result: **`A4.3 SIGNAL BENCHMARK FAIL`**. There was 1 confirmed pass among 3 evaluated companies and 1 confirmed pass across the fixed 5-company cohort. After two new insufficiencies, the maximum achievable coverage was **3/5**, below the required **4/5**, so stopping before Canva and `notion.so` was mandatory. This is evidence against representative coverage for the fixed discovery → selector signal path; it is not evidence of a selector failure, company-resolution behavior, description quality, edge behavior, production source verification, endpoint/UI readiness, deployment readiness, or full provider/product GO.
+
 ## Phase B
 _Not yet run._
 

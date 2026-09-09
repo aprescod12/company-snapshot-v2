@@ -15,21 +15,24 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Gemini A1 and the tested Exa A3 final-snapshot `auto` hypothesis remain `NO-GO`; A4.1 raw discovery is `DISCOVERY SUFFICIENT`, and the bounded A4.2 NVIDIA selector smoke is `SELECTOR PASS`.**
+**A4.3 validly early-stopped with `A4.3 SIGNAL BENCHMARK FAIL`: NVIDIA's A4.2 pass was reused, while Stripe and PostHog were both `DISCOVERY INSUFFICIENT`. Maximum possible ordinary coverage fell to 3/5, below the required 4/5.**
 
 The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
 
 Exactly one separately authorized raw `auto` Search request returned 10 highlighted candidates. Manual review found three distinct, first-party, materially supported NVIDIA events, all within 90 days. A4.1 demonstrated that a dedicated signal-oriented raw-discovery query can retrieve enough strong recent candidates for NVIDIA, supporting a decomposed discovery → selection direction. Because the A4.1 query differed from A3's final-snapshot query, the experiment does not isolate whether A3 failed solely in downstream selection versus retrieval-query formulation. A4.1 request count is 1, cumulative Exa request count is 2, no retry occurred, and the runtime architecture remains intentionally **not frozen**.
 
-A4.2 now provides a generic dependency-free selector for already-retrieved candidates. Its one authorized NVIDIA smoke reused the A4.1 request contract and returned 10 candidates; the selector chose ranks `1,3,5`. Manual review found those three first-party selections supported, material, distinct, and within 90 days, so the smoke passed. Rank 4 was also qualifying but had no provider date and therefore correctly sorted behind rank 5 under the frozen recency-first contract. The conservative lexical deduper missed two human duplicate groups, though neither affected the selected set. A4.2 request count is 1, cumulative Exa request count is 3, and representative-company behavior remains untested.
+A4.2 now provides a generic dependency-free selector for already-retrieved candidates. Its one authorized NVIDIA smoke reused the A4.1 request contract and returned 10 candidates; the selector chose ranks `1,3,5`. Manual review found those three first-party selections supported, material, distinct, and within 90 days, so the smoke passed.
+
+A4.3 reused that NVIDIA result and then ran the frozen discovery → selector pipeline sequentially on Stripe and PostHog. Each one-request raw set contained only two qualifying distinct events, so both cases were `DISCOVERY INSUFFICIENT`. After two new failures, even successful Canva and `notion.so` cases could reach only 3/5, making the required 4/5 impossible; the benchmark stopped without those requests. A4.3 made 2 requests with zero retries, cumulative Exa request count is 5, and the result returns for project-owner reassessment. The recurring lexical duplicate-recall misses did not corrupt any observed selected set.
 
 Current provider decision sequence:
 
 1. Gemini 2.5 Flash + Google Search grounding — `NO-GO` at A1 model access.
 2. Exa `auto` Search with structured output and provider grounding — `NO-GO` at the NVIDIA A3 manual evidence gate; representative benchmark was not run.
 3. Exa raw `auto` Search plus highlights — `DISCOVERY SUFFICIENT` at A4.1.
-4. Deterministic recency/provenance/lexical-dedup selector — `SELECTOR PASS` on the single A4.2 NVIDIA smoke; representative testing requires separate approval.
-5. Stop for project-owner review. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
+4. Deterministic recency/provenance/lexical-dedup selector — `SELECTOR PASS` on the single A4.2 NVIDIA smoke.
+5. Fixed A4.1 discovery → A4.2 selector representative benchmark — `A4.3 SIGNAL BENCHMARK FAIL` after Stripe and PostHog were both discovery-insufficient; mandatory early stop at a 3/5 coverage ceiling.
+6. Stop for project-owner reassessment. `deep-lite`, Tavily, and Groq are not automatic fallbacks.
 
 See `docs/PLAN.md` for the complete current decision record.
 
@@ -67,9 +70,10 @@ node scripts/gemini-phase-a.mjs smoke --company NVIDIA --confirmed-unbilled
 node scripts/exa-phase-a.mjs smoke --company NVIDIA --confirmed-free-starter
 node scripts/exa-phase-a-discovery.mjs discovery --company NVIDIA --confirmed-free-starter
 node scripts/exa-phase-a-selector-smoke.mjs selector-smoke --company NVIDIA --confirmed-free-starter
+node scripts/exa-phase-a-signal-benchmark.mjs --help
 ```
 
-Do not run or rerun a live diagnostic without explicit phase-specific authorization. Each diagnostic makes at most one request and has no automatic retry or polling path. The A3 Exa diagnostic uses structured output plus grounding; the A4.1 diagnostic instead exposes raw result metadata and requested highlights for separate inspection without proving which A3 pipeline stage caused the failure. The A4.2 harness reuses that discovery request and hands candidates to the local selector in memory; the selector itself performs no network or source-page access. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one. The representative benchmark remains separately gated.
+Do not run or rerun a live diagnostic without explicit phase-specific authorization. Each diagnostic makes at most one request and has no automatic retry or polling path. The A3 Exa diagnostic uses structured output plus grounding; the A4.1 diagnostic instead exposes raw result metadata and requested highlights for separate inspection without proving which A3 pipeline stage caused the failure. The A4.2 harness reuses that discovery request and hands candidates to the local selector in memory; the selector itself performs no network or source-page access. The A4.3 harness is a bounded historical benchmark tool, not an unrestricted production CLI; its live cases have already early-stopped and must not be rerun without new authorization. `deep-lite` has never been tested and is only a possible separately authorized fallback, never an automatic one.
 
 ## Submission targets
 
