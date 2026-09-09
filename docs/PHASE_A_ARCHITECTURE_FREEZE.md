@@ -2,7 +2,7 @@
 
 ## Decision
 
-**Architecture direction frozen; Phase A exit remains pending A4.5.**
+**Architecture direction frozen; A4.5 subsequently made Phase A implementation-ready.**
 
 The rejected shape is:
 
@@ -71,13 +71,11 @@ The approved direction excludes custom or recursive crawling, sitemap/RSS system
 
 Guiding rule: **one primary search, one conditional fallback, bounded verification, then stop.** Any addition beyond this ceiling requires later observed production evidence and separate approval.
 
-## A4.5 final feasibility contract
+## A4.5 feasibility result
 
-A4.5 is the remaining Phase A exit test. It is not authorized or executed by A4.4.
+Stripe was the A4.5 fixture because its broad path repeatedly produced two qualifying events. One official-domain-focused fallback request was authorized and executed with the frozen two-search ceiling. It returned a distinct, materially supported first-party OpenRouter acquisition dated 2026-08-19, plus other qualifying fallback candidates.
 
-Likely fixture: Stripe, because its broad path repeatedly produced two qualifying events. Goal: determine whether one official-domain-focused Exa fallback can produce at least one additional valid distinct ≤180-day Stripe signal without changing the broad-first architecture.
-
-The future A4.5 authorization must permit at most **one new Exa request**, define the exact fallback request contract before credentials load, preserve the two-search ceiling, inspect exact returned destinations, and retain the current recency policy. If it succeeds, Phase A can be frozen for implementation planning; if it fails, return for architecture reassessment without adding layers.
+**A4.5 outcome: `FALLBACK FEASIBLE`; `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`.** The request contract, all candidate classifications, and bounded interpretation are recorded in `docs/PHASE_A_FALLBACK_FEASIBILITY.md`. This does not prove production company resolution, verification implementation, arbitrary-company reliability, or app readiness.
 
 ## Unresolved implementation questions
 
@@ -91,6 +89,6 @@ These remain deliberately unimplemented:
 
 ## Scope, counts, and interpretation
 
-A4.4 made no provider or source request and changed no executable code, selector behavior, recency policy, or historical phase record. Exa counts remain A3 1, A4.1 1, A4.2 1, A4.3 2, A4.3R1 1: **6 cumulative**.
+A4.4 made no provider or source request and changed no executable code, selector behavior, recency policy, or historical phase record. A4.5 then made one fallback request. Exa counts are A3 1, A4.1 1, A4.2 1, A4.3 2, A4.3R1 1, A4.5 1: **7 cumulative**.
 
 This is an evidence-bounded design decision, not a full provider/product GO. It defines the smallest next test and the maximum architecture permitted if that test succeeds.

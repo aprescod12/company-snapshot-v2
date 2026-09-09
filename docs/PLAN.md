@@ -2,9 +2,9 @@
 
 ## Status
 
-**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`, A4.3R0 remains `NO POLICY CHANGE YET`, and A4.3R1 remains `RETRIEVAL REPAIR FAIL`. A4.4 freezes the Phase A direction—not production readiness—as one broad Exa discovery pass, bounded source verification/backfill, and at most one conditional official-domain fallback. A4.5 must test that fallback before Phase A exit. Cumulative Exa requests remain 6.**
+**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`, A4.3R0 remains `NO POLICY CHANGE YET`, and A4.3R1 remains `RETRIEVAL REPAIR FAIL`. A4.5 validated the frozen conditional official-domain fallback on Stripe, so Phase A is `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`. The small direction remains one broad Exa discovery pass, bounded source verification/backfill, and at most one fallback. Cumulative Exa requests are 7.**
 
-This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events under the approved 180-day policy, so each was `DISCOVERY INSUFFICIENT`; the mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. A4.3R0 later found that broader sparse policies would make PostHog's raw set sufficient but would not change the frozen selector's invalid `3,2,7` selection; Stripe remains insufficient under defensible qualitative safeguards. A4.3R1 tested exactly one fresh retrieval change—a fixed source-quality/novelty `systemPrompt`—and Stripe again had only two qualifying raw events, so it early-stopped before PostHog. A4.4 freezes the resulting small architecture direction: Exa remains primary discovery, the selector becomes prioritization/light dedupe rather than final evidence approval, and verification can use one official-domain fallback only to fill missing slots. A4.5 must validate that unimplemented fallback before Phase A exit. No production implementation, provider request, selector/retrieval change, or later phase is authorized.
+This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events under the approved 180-day policy, so each was `DISCOVERY INSUFFICIENT`; the mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. A4.3R0 later found that broader sparse policies would make PostHog's raw set sufficient but would not change the frozen selector's invalid `3,2,7` selection; Stripe remains insufficient under defensible qualitative safeguards. A4.3R1 tested exactly one fresh retrieval change—a fixed source-quality/novelty `systemPrompt`—and Stripe again had only two qualifying raw events, so it early-stopped before PostHog. A4.4 froze the small direction: Exa remains primary discovery, the selector is prioritization/light dedupe rather than final evidence approval, and verification can use one official-domain fallback only to fill missing slots. A4.5 then found distinct, supported first-party Stripe fallback events beyond the two preserved broad-pass signals. Phase A is approved for implementation, but no implementation phase began here.
 
 ## Source-of-truth hierarchy
 
@@ -342,7 +342,13 @@ A4.3R1 made **1** request with zero retries; cumulative Exa requests are **6**. 
 
 The approved ceiling is one broad Exa discovery request, candidate prioritization/light dedupe, prioritized exact-source verification, and only when fewer than three valid distinct events survive, one conditional official-domain/first-party Exa fallback to backfill missing slots. The hard limit is **two discovery requests per company**. The selector is no longer treated as final evidence approval; verification controls eligibility. Recency remains ≤90 days preferred and 91–180 days fallback, with an honest insufficient-evidence state after the bounded path is exhausted.
 
-No crawler, provider waterfall, third search, Tavily fallback, embeddings/vector database, database, reputation engine, elaborate event taxonomy, LangChain/LangGraph, runtime agents, evidence graph, complex scoring, arbitrary retry, or unbounded backfill is approved. A4.5 is the single remaining feasibility test: at most one official-domain-focused Stripe fallback request, with an exact contract to be approved before execution. It was not run here. See `docs/PHASE_A_ARCHITECTURE_FREEZE.md`.
+No crawler, provider waterfall, third search, Tavily fallback, embeddings/vector database, database, reputation engine, elaborate event taxonomy, LangChain/LangGraph, runtime agents, evidence graph, complex scoring, arbitrary retry, or unbounded backfill is approved. A4.5 was the single feasibility test: one official-domain-focused Stripe fallback request under an exact approved contract. Its successful result is recorded below and in `docs/PHASE_A_ARCHITECTURE_FREEZE.md`.
+
+### A4.5 — Final official-domain fallback feasibility
+
+**2026-09-09 A4.5 outcome: `FALLBACK FEASIBLE`; `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`.** One Stripe-only A4.1-semantic fallback added only `includeDomains: ["stripe.com", "*.stripe.com"]`, returned 10 first-party candidates, and made no retry. Exact-destination review found four additional qualifying distinct events; the August 19 OpenRouter acquisition alone filled the missing third slot beyond the preserved August 17 FX and June 9 Lloyds events.
+
+A4.5 made **1** request; cumulative Exa requests are **7**. This one Stripe feasibility case supports the bounded broad-first plus one official-domain fallback direction, not universal provider reliability, production resolution, verification implementation, synthesis, endpoint/UI readiness, or deployment. No third search, A4.6, or implementation work was started. See `docs/PHASE_A_FALLBACK_FEASIBILITY.md`.
 
 ## Phase A deliverables
 
@@ -406,7 +412,7 @@ If a provider fails these materially, reject it quickly.
 ## Phase A — V2 reset + viability benchmark
 Prove the retrieval/research approach on real companies. No polished UI.
 
-**Exit:** A4.5 either demonstrates the one official-domain fallback within the frozen two-search ceiling, or returns the architecture for reassessment. No production implementation begins before that result.
+**Exit:** `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION` after A4.5 demonstrated one valid official-domain fallback within the frozen two-search ceiling. Production implementation remains separately authorized.
 
 ## Phase B — Minimal production snapshot pipeline
 Build only what Phase A proved useful:
@@ -511,11 +517,10 @@ Reuse is allowed only when the V2 task benefits materially and the reused code d
 
 ---
 
-# 11. Current sequence after A4.4
+# 11. Current sequence after A4.5
 
-1. Obtain a new full-context A4.5 authorization defining one official-domain-focused fallback request for Stripe.
-2. Run at most that one request; inspect exact destinations and decide whether it adds one valid distinct ≤180-day signal.
-3. If it passes, freeze the bounded Phase A architecture for implementation planning; if it fails, stop for reassessment without adding retrieval layers.
-4. Only after a successful A4.5 and explicit approval, begin the Phase B production endpoint, then UI, deployment, and final review.
+1. Phase A is architecture-approved from the bounded broad-first plus one official-domain-fallback evidence.
+2. Obtain a new full-context authorization before beginning Phase B production implementation.
+3. Build the approved small pipeline, then the UI, deployment, and production verification in separately authorized phases.
 
-No production application implementation begins until the project owner explicitly approves it after Phase A exit.
+No production application implementation began during A4.5.

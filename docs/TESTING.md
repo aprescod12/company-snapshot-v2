@@ -499,6 +499,24 @@ Documentation verification date: 2026-09-09
 
 Result: **architecture direction frozen, Phase A exit pending A4.5.** A4.4 makes no provider/product GO claim. It preserves A4.3 `FAIL`, A4.3R0 `NO POLICY CHANGE YET`, and A4.3R1 `RETRIEVAL REPAIR FAIL`; it prohibits a crawler, provider waterfall, third search, unbounded backfill, or V1-like evidence architecture without separate evidence and approval. See `docs/PHASE_A_ARCHITECTURE_FREEZE.md`.
 
+### Exa A4.5 — final official-domain fallback feasibility
+
+Implementation and live verification date: 2026-09-09
+
+| Measure | Contract and observed result |
+| --- | --- |
+| Baseline | `233528ea45691b0c63de8d9edcb62e4afba371e3` on `main`, matching `origin/main`; clean worktree/index before changes or provider access |
+| Fixture / existing signals | Stripe / preserved A: FX 2026-08-17; B: Lloyds 2026-06-09 |
+| Sole retrieval change | `includeDomains: ["stripe.com", "*.stripe.com"]` added to the otherwise identical A4.1 raw request |
+| Preserved contract | `POST /search`, generic Stripe query, `auto`, 10 results, highlights; no date/category/schema/system prompt/second model/synthesis/retry |
+| Requests | A4.5 1; retries 0; broad Stripe reruns 0; cumulative Exa 7 |
+| Result | 2,088 ms; $0.007; 10 raw/dated/highlighted results, all from `stripe.com` |
+| Qualifying fallback events | OpenRouter acquisition (2026-08-19), Singapore expansion (2026-08-25), Sessions/Google partnership (2026-04-29), Germany tools (2026-06-30) |
+
+The exact returned destinations were inspected without replacement-source search. Rank 3 duplicated existing Lloyds signal B; rank 8 duplicated existing FX signal A; ranks 5/9/10 overlapped on the Sessions 2026 launch bundle; rank 4 was inaccessible; and rank 7 was older than 180 days. Rank 1's supported August 19 OpenRouter acquisition independently filled the missing slot.
+
+Result: **`FALLBACK FEASIBLE`; `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`.** This validates only the small bounded fallback direction in one Stripe case. It does not prove production company resolution, verification implementation, universal fallback reliability, synthesis, endpoint/UI behavior, or deployment. See `docs/PHASE_A_FALLBACK_FEASIBILITY.md`.
+
 ## Phase B
 _Not yet run._
 
