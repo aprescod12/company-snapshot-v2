@@ -99,3 +99,11 @@ The local B2R1 fixture (`Stripe` → `Stripe, Inc.` / `stripe.com` / `ambiguous:
 Zero-network verification passed: syntax checks; 42/42 focused B1/B2 tests; and the complete `node --test test/*.test.mjs` suite at 130/130. An independent reviewer found no safety defect, provider access, hardcoding, abstraction creep, or domain-anchor regression. It caught two fixture-coverage gaps—an outdated Mercury input selection and missing strict-path contradictory-domain coverage—which were fixed before the final run.
 
 B2R2 does not approve B2 or authorize another live request. Cumulative Exa experimental requests remain **12**. B3 and all later work remain unstarted.
+
+## B2R2.1 — strict legal-suffix ambiguity exception
+
+B2R2.1 made **0 provider requests**. It replaces B2R2's overly broad normalized-name equality rule for `ambiguous: true` with a strict legal-suffix expansion: submitted tokens must be an exact prefix of resolved tokens, the resolved value must add at least one token, and every added trailing token must be one of the existing ordinary legal suffixes. No suffix-looking token is removed from the submitted name or from an internal resolved-name position.
+
+Thus `Stripe` → `Stripe, Inc.` resolves with the existing valid field-specific `stripe.com` grounding, while `Mercury` → `Mercury`, `Stripe` → `Stripe Payments, Inc.`, and the historical combined Mercury response clarify. The existing `ambiguous: false` compatibility/prefix behavior, missing-ambiguity clarification, field-specific grounding/domain requirements, contradiction check, and domain-input anchoring are unchanged.
+
+Syntax checks, focused B1/B2 tests (40/40), and the full zero-network suite (131/131) passed. No provider access, query/schema change, retry, selector change, fallback, B3, or later work occurred. B2 remains unapproved; cumulative Exa experimental requests remain **12**.

@@ -148,10 +148,11 @@ test("strict same-entity ambiguity evidence resolves the captured Stripe shape",
   });
 });
 
-test("ambiguous names require strict matching and field-specific first-party corroboration", () => {
+test("ambiguous names require legal-suffix expansion and field-specific first-party corroboration", () => {
   const target = prepareCompanyTarget("Stripe");
   for (const candidate of [
     strictAmbiguousEvidence({ resolvedCompanyName: "Stripe Payments" }),
+    strictAmbiguousEvidence({ resolvedCompanyName: "Stripe Payments, Inc." }),
     strictAmbiguousEvidence({ groundingByField: { officialDomain: ["https://stripe.com/legal"] } }),
     strictAmbiguousEvidence({ groundingByField: { resolvedCompanyName: ["https://stripe.com/about"] } }),
     strictAmbiguousEvidence({
@@ -165,6 +166,19 @@ test("ambiguous names require strict matching and field-specific first-party cor
   ]) {
     assert.equal(confirmCompanyIdentity(target, candidate).status, TARGET_STATUS.CLARIFICATION_NEEDED);
   }
+});
+
+test("an exact ambiguous Mercury name still requires clarification", () => {
+  const result = confirmCompanyIdentity(prepareCompanyTarget("Mercury"), {
+    resolvedCompanyName: "Mercury",
+    officialDomain: "mercury.com",
+    ambiguous: true,
+    groundingByField: {
+      resolvedCompanyName: ["https://mercury.com/about"],
+      officialDomain: ["https://mercury.com/legal"],
+    },
+  });
+  assert.equal(result.status, TARGET_STATUS.CLARIFICATION_NEEDED);
 });
 
 test("deceptive hostnames do not corroborate an official domain", () => {

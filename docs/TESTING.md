@@ -605,6 +605,20 @@ Implementation and verification date: 2026-09-09
 
 Independent review found no safety defect or provider-access addition. It identified two test-coverage gaps—the Mercury orchestration fixture was no longer invoked with `Mercury`, and strict-path contradictory-domain coverage was absent—which were corrected before final verification. This correction does not approve B2, authorize a new live request, or begin B3.
 
+### B2R2.1 — strict legal-suffix ambiguity exception
+
+| Measure | Observed result |
+| --- | --- |
+| Provider activity | Exa 0; cumulative Exa experimental requests remain 12 |
+| `ambiguous: true` name rule | Resolved name must add one or more trailing tokens, all recognized legal suffixes, after the exact submitted-token prefix |
+| Stripe fixture | `Stripe` → `Stripe, Inc.` resolves with valid field-specific `stripe.com` grounding |
+| Exact-name Mercury | `Mercury` → `Mercury` clarifies despite valid first-party grounding |
+| Other negatives | Historical Mercury, `Stripe Payments, Inc.`, missing ambiguity/grounding, contradictory or deceptive evidence clarify |
+| Existing behavior | `ambiguous: false` prefix behavior and domain anchoring unchanged |
+| Verification | Syntax checks passed; focused tests 40/40; `node --test test/*.test.mjs` 131/131 |
+
+No live provider request occurred. B2 remains unapproved and B3 remains unstarted.
+
 ## Phase C
 _Not yet run._
 

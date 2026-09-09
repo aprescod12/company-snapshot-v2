@@ -83,11 +83,16 @@ function normalizeName(value) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function normalizedWords(value) {
-  return value
+function normalizedNameTokens(value) {
+  return (
+    value
     .toLocaleLowerCase("en-US")
-    .match(/[\p{L}\p{N}]+/gu)
-    ?.filter((word) => !NAME_SUFFIXES.has(word)) ?? [];
+    .match(/[\p{L}\p{N}]+/gu) ?? []
+  );
+}
+
+function normalizedWords(value) {
+  return normalizedNameTokens(value).filter((word) => !NAME_SUFFIXES.has(word));
 }
 
 function namesAreConsistent(submittedName, resolvedName) {
@@ -100,10 +105,12 @@ function namesAreConsistent(submittedName, resolvedName) {
   return submittedText === resolvedText || resolvedText.startsWith(`${submittedText} `);
 }
 
-function namesStrictlyMatch(submittedName, resolvedName) {
-  const submitted = normalizedWords(submittedName);
-  const resolved = normalizedWords(resolvedName);
-  return submitted.length > 0 && submitted.join(" ") === resolved.join(" ");
+function isLegalSuffixExpansion(submittedName, resolvedName) {
+  const submitted = normalizedNameTokens(submittedName);
+  const resolved = normalizedNameTokens(resolvedName);
+  if (submitted.length === 0 || resolved.length <= submitted.length) return false;
+  if (submitted.some((token, index) => token !== resolved[index])) return false;
+  return resolved.slice(submitted.length).every((token) => NAME_SUFFIXES.has(token));
 }
 
 function isSameDomainOrSubdomain(hostname, officialDomain) {
@@ -252,7 +259,7 @@ export function confirmCompanyIdentity(target, identityEvidence) {
       return clarification("insufficient_identity_evidence");
     }
   } else if (evidence.ambiguous === true) {
-    if (!namesStrictlyMatch(target.companyName, resolvedCompanyName)) {
+    if (!isLegalSuffixExpansion(target.companyName, resolvedCompanyName)) {
       return clarification("insufficient_identity_evidence");
     }
     if (!fieldSpecificGroundingCorroboratesDomain(evidence.groundingByField, proposedDomain)) {

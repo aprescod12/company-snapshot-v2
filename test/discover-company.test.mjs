@@ -54,6 +54,10 @@ test("ambiguous and unsupported name evidence quarantine candidates", async () =
   for (const { input, value } of [
     {
       input: "Mercury",
+      value: payload({ identity: { resolvedCompanyName: "Mercury", officialDomain: "mercury.com", ambiguous: true }, evidenceDomain: "mercury.com" }),
+    },
+    {
+      input: "Mercury",
       value: payload({ identity: { resolvedCompanyName: "Mercury (Fintech) and Mercury Systems (Aerospace/Defense)", officialDomain: "mercury.com", ambiguous: true }, evidenceDomain: "mercury.com" }),
     },
     { input: "Stripe", value: payload({ evidenceDomain: "unrelated.test" }) },
