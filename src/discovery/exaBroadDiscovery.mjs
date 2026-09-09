@@ -89,8 +89,8 @@ export function buildBroadQuery(targetValue, now = new Date()) {
   return `Find recent significant company-level developments involving ${targetValue} as of ${today}. Prioritize major product or platform announcements, partnerships or customer deals, financial results, acquisitions or investments, leadership changes, geographic or capacity expansion, regulatory or legal developments, and major strategic initiatives. Prefer first-party company announcements and reputable independent reporting. Exclude routine repository or code maintenance, generic company profiles, stock-price commentary, evergreen pages, and duplicate coverage of the same event.`;
 }
 
-export function buildBroadRequestBody(targetValue, now = new Date()) {
-  return {
+export function buildBroadRequestBody(targetValue, now = new Date(), { includeDomains } = {}) {
+  const body = {
     query: buildBroadQuery(targetValue, now),
     type: EXA_SEARCH_TYPE,
     numResults: EXA_RESULT_LIMIT,
@@ -98,6 +98,8 @@ export function buildBroadRequestBody(targetValue, now = new Date()) {
     outputSchema: IDENTITY_OUTPUT_SCHEMA,
     stream: false,
   };
+  if (includeDomains !== undefined) body.includeDomains = includeDomains;
+  return body;
 }
 
 export function extractIdentityEvidenceUrls(grounding, field) {
@@ -183,7 +185,7 @@ function classifyHttpFailure(status, tag) {
 export async function requestExaBroadDiscovery(
   targetValue,
   apiKey,
-  { fetchImpl = fetch, now = new Date(), timeoutMs = DEFAULT_TIMEOUT_MS } = {},
+  { fetchImpl = fetch, now = new Date(), timeoutMs = DEFAULT_TIMEOUT_MS, includeDomains } = {},
 ) {
   if (typeof apiKey !== "string" || apiKey.length === 0) {
     throw new BroadDiscoveryError("provider_auth", "EXA_API_KEY is not set.");
@@ -202,7 +204,7 @@ export async function requestExaBroadDiscovery(
     response = await fetchImpl(EXA_SEARCH_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-      body: JSON.stringify(buildBroadRequestBody(targetValue, now)),
+      body: JSON.stringify(buildBroadRequestBody(targetValue, now, { includeDomains })),
       signal: controller.signal,
     });
     try {
@@ -234,6 +236,27 @@ export async function requestExaBroadDiscovery(
   }
 
   return parseBroadDiscoveryPayload(payload, latencyMs);
+}
+
+/**
+ * Make the sole optional B3 fallback Search. It reuses the frozen B2 parser and
+ * request behavior, adding only A4.5's official-domain constraint.
+ */
+export async function requestOfficialDomainFallback(
+  officialDomain,
+  apiKey,
+  { fetchImpl = fetch, now = new Date(), timeoutMs = DEFAULT_TIMEOUT_MS } = {},
+) {
+  if (typeof officialDomain !== "string" || officialDomain.trim().length === 0) {
+    throw new TypeError("officialDomain must be a non-empty hostname.");
+  }
+  const domain = officialDomain.trim().toLowerCase();
+  return requestExaBroadDiscovery(domain, apiKey, {
+    fetchImpl,
+    now,
+    timeoutMs,
+    includeDomains: [domain, `*.${domain}`],
+  });
 }
 
 export function candidateAggregates(candidates) {

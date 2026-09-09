@@ -633,6 +633,21 @@ No live provider request occurred. B2 remains unapproved and B3 remains unstarte
 
 No retry, fallback, source verification, candidate-page opening, implementation patch, B3, endpoint, UI, deployment, or later-phase work occurred. No raw provider response, credential, authorization header, or temporary provider artifact was persisted. Provider dates remain discovery metadata and candidates remain unverified. B2 remains pending project-owner post-run review; B3 remains not started.
 
+### B3 — source verification and bounded fallback implementation
+
+| Measure | Observed result |
+| --- | --- |
+| B2 status | Project owner approved `B2 PRODUCTION BROAD DISCOVERY — APPROVED` after B2R3; this implementation uses B2's full ordered `prioritized` queue. |
+| Source boundary | Native injected `fetch`; GET only; manual redirects capped at 5; 5-second timeout; 2 MiB cap; HTML/XHTML only; no auth, cookies, browser execution, retries, recursive crawling, or persistence. Credential-bearing and literal-IP targets, blocked/challenge/status failures, non-HTML, timeouts, and oversized responses fail closed. |
+| Evidence gates | Publisher HTML must provide substantive article evidence, company/event support, a source-derived publication date, and non-trivial material. Provider `publishedDate` cannot prove eligibility. Date priority: JSON-LD `datePublished`, article metadata, then article `<time datetime>`; unknown/future/old dates reject. |
+| Verification / dedupe | Sequential B2 order; stops after 3 accepted distinct records. Duplicate source/final URLs and selector-style lexical overlap over publisher-derived evidence reject duplicates, including FX and Sessions-style overlap fixtures. |
+| Fallback | Only after the full broad queue is exhausted below 3; exactly one possible existing-parser Exa request constrained to the official-domain root plus wildcard subdomain; fallback candidates fill only missing slots and dedupe against accepted broad evidence. |
+| Focused zero-network tests | `node --test test/verification.test.mjs` — 13/13 passed. Covers HTML/redirect/failure bounds, dates, provider-date exclusion, support/triviality, duplicate cases, early stop, conditional fallback, and insufficient evidence. |
+| Full zero-network suite | `node --test test/*.test.mjs` — 144/144 passed. |
+| Provider accounting | B3 implementation Exa requests: 0; live publisher requests: 0; retries: 0; cumulative Exa experimental requests remain 14. |
+
+No B3 live validation, source-page smoke, synthesis, endpoint, UI, deployment, B4, or later-phase work occurred. B3 implementation is pending project-owner/ChatGPT review and is not production-approved.
+
 ## Phase C
 _Not yet run._
 
