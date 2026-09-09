@@ -36,26 +36,25 @@ function summarizeDiagnostic(providerResult, identityResult) {
   };
 }
 
-/**
- * Run the B2 request and return a sanitized diagnostic summary for the bounded
- * smoke harness. It intentionally never returns raw candidates for an
- * unresolved identity.
- */
 async function runCompanyDiscovery(
   rawInput,
   apiKey,
-  { fetchImpl = fetch, now = new Date(), timeoutMs, onDiagnostic } = {},
+  { fetchImpl = fetch, now = new Date(), timeoutMs } = {},
+  includeDiagnostic = false,
 ) {
   const target = prepareCompanyTarget(rawInput);
   if (target.status !== TARGET_STATUS.PREPARED) {
-    const diagnostic = {
-      identity: null,
-      groundingByField: null,
-      confirmation: { state: target.status, reason: target.reason },
-      provider: null,
+    const result = clarification(target.reason);
+    if (!includeDiagnostic) return result;
+    return {
+      result,
+      diagnostic: {
+        identity: null,
+        groundingByField: null,
+        confirmation: { state: target.status, reason: target.reason },
+        provider: null,
+      },
     };
-    if (typeof onDiagnostic === "function") onDiagnostic(diagnostic);
-    return clarification(target.reason);
   }
 
   const queryTarget = target.kind === "name" ? target.companyName : target.officialDomain;
@@ -65,10 +64,10 @@ async function runCompanyDiscovery(
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   });
   const identityResult = confirmCompanyIdentity(target, buildIdentityEvidence(providerResult));
-  const diagnostic = summarizeDiagnostic(providerResult, identityResult);
-  if (typeof onDiagnostic === "function") onDiagnostic(diagnostic);
+  const diagnostic = includeDiagnostic ? summarizeDiagnostic(providerResult, identityResult) : null;
   if (identityResult.status !== TARGET_STATUS.RESOLVED) {
-    return clarification(identityResult.reason);
+    const result = clarification(identityResult.reason);
+    return includeDiagnostic ? { result, diagnostic } : result;
   }
 
   const selection = selectSignals(providerResult.candidates, {
@@ -77,7 +76,7 @@ async function runCompanyDiscovery(
     now,
   });
 
-  return {
+  const result = {
     state: "ready_for_verification",
     company: {
       inputKind: identityResult.kind,
@@ -89,8 +88,13 @@ async function runCompanyDiscovery(
     prioritized: selection.prioritized,
     selected: selection.selected,
     evaluated: selection.evaluated,
-    provider: diagnostic.provider,
+    provider: {
+      latencyMs: providerResult.latencyMs,
+      estimatedCostUsd: providerResult.estimatedCostUsd,
+      ...candidateAggregates(providerResult.candidates),
+    },
   };
+  return includeDiagnostic ? { result, diagnostic } : result;
 }
 
 /**
@@ -100,12 +104,32 @@ async function runCompanyDiscovery(
 export async function discoverCompany(
   rawInput,
   apiKey,
-  { fetchImpl = fetch, now = new Date(), timeoutMs, onDiagnostic } = {},
+  { fetchImpl = fetch, now = new Date(), timeoutMs } = {},
 ) {
   return runCompanyDiscovery(rawInput, apiKey, {
     fetchImpl,
     now,
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
-    ...(onDiagnostic === undefined ? {} : { onDiagnostic }),
   });
+}
+
+/**
+ * Bounded smoke/test path. It uses the production discovery execution once,
+ * then returns only its normal result plus a sanitized diagnostic summary.
+ */
+export async function discoverCompanyForSmoke(
+  rawInput,
+  apiKey,
+  { fetchImpl = fetch, now = new Date(), timeoutMs } = {},
+) {
+  return runCompanyDiscovery(
+    rawInput,
+    apiKey,
+    {
+      fetchImpl,
+      now,
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    },
+    true,
+  );
 }

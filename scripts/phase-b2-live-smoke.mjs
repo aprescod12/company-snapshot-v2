@@ -3,7 +3,7 @@
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { discoverCompany } from "../src/discovery/discoverCompany.mjs";
+import { discoverCompanyForSmoke } from "../src/discovery/discoverCompany.mjs";
 
 export const B2_SMOKE_MODE = "b2-smoke";
 export const ALLOWED_INPUTS = Object.freeze(["Stripe", "stripe.com"]);
@@ -114,13 +114,8 @@ async function main() {
     }
     const apiKey = process.env.EXA_API_KEY ?? "";
     validateOptions(options, apiKey);
-    let diagnostic;
-    const result = await discoverCompany(options.company, apiKey, {
-      onDiagnostic: (observation) => {
-        diagnostic = observation;
-      },
-    });
-    console.log(formatSmokeOutput({ result, diagnostic }));
+    const observed = await discoverCompanyForSmoke(options.company, apiKey);
+    console.log(formatSmokeOutput(observed));
   } catch (error) {
     console.error(`Phase B2 smoke failed: ${redact(error?.message ?? error, process.env.EXA_API_KEY ?? "")}`);
     process.exitCode = 1;

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildIdentityEvidence, discoverCompany } from "../src/discovery/discoverCompany.mjs";
+import { buildIdentityEvidence, discoverCompany, discoverCompanyForSmoke } from "../src/discovery/discoverCompany.mjs";
 
 const NOW = new Date("2026-09-09T12:00:00.000Z");
 
@@ -82,28 +82,27 @@ test("missing ambiguity is a safe clarification rather than a verification-ready
   assert.equal(result.state, "clarification_needed");
 });
 
-test("B2 hands B1 the exact parsed identity plus combined exact grounding", async () => {
-  const observed = [];
-  const result = await discoverCompany("Stripe", "test-key", {
+test("smoke path hands B1 the exact parsed identity plus combined exact grounding once", async () => {
+  const calls = { count: 0 };
+  const observed = await discoverCompanyForSmoke("Stripe", "test-key", {
     now: NOW,
-    fetchImpl: fetchPayload(payload(), { count: 0 }),
-    onDiagnostic: (diagnostic) => observed.push(diagnostic),
+    fetchImpl: fetchPayload(payload(), calls),
   });
-  assert.equal(result.state, "ready_for_verification");
-  assert.equal(observed.length, 1);
-  assert.deepEqual(observed[0].identity, {
+  assert.equal(calls.count, 1);
+  assert.equal(observed.result.state, "ready_for_verification");
+  assert.deepEqual(observed.diagnostic.identity, {
     resolvedCompanyName: "Stripe",
     officialDomain: "stripe.com",
     ambiguous: false,
   });
-  assert.deepEqual(observed[0].groundingByField, {
+  assert.deepEqual(observed.diagnostic.groundingByField, {
     resolvedCompanyName: ["https://stripe.com/about"],
     officialDomain: ["https://stripe.com/about"],
   });
-  assert.equal(observed[0].confirmation.state, "resolved");
+  assert.equal(observed.diagnostic.confirmation.state, "resolved");
   assert.deepEqual(
     buildIdentityEvidence({
-      identity: observed[0].identity,
+      identity: observed.diagnostic.identity,
       evidenceUrls: ["https://stripe.com/about"],
     }),
     {
@@ -115,19 +114,19 @@ test("B2 hands B1 the exact parsed identity plus combined exact grounding", asyn
   );
 });
 
-test("diagnostic observer is sanitized while default clarification remains queue-free", async () => {
-  const observed = [];
-  const result = await discoverCompany("Stripe", "test-key", {
+test("smoke diagnostics are sanitized while production clarification remains queue-free", async () => {
+  const calls = { count: 0 };
+  const observed = await discoverCompanyForSmoke("Stripe", "test-key", {
     now: NOW,
-    fetchImpl: fetchPayload(payload({ identity: { resolvedCompanyName: "Stripe", officialDomain: "stripe.com", ambiguous: true } }), { count: 0 }),
-    onDiagnostic: (diagnostic) => observed.push(diagnostic),
+    fetchImpl: fetchPayload(payload({ identity: { resolvedCompanyName: "Stripe", officialDomain: "stripe.com", ambiguous: true } }), calls),
   });
-  assert.deepEqual(result, { state: "clarification_needed", reason: "insufficient_identity_evidence" });
-  assert.equal(observed.length, 1);
-  assert.deepEqual(Object.keys(observed[0]).sort(), ["confirmation", "groundingByField", "identity", "provider"]);
-  assert.equal("candidates" in observed[0], false);
-  assert.equal("highlights" in observed[0], false);
-  assert.equal(observed[0].provider.resultCount, 5);
+  assert.equal(calls.count, 1);
+  assert.deepEqual(observed.result, { state: "clarification_needed", reason: "insufficient_identity_evidence" });
+  assert.deepEqual(Object.keys(observed.diagnostic).sort(), ["confirmation", "groundingByField", "identity", "provider"]);
+  assert.equal("candidates" in observed.diagnostic, false);
+  assert.equal("highlights" in observed.diagnostic, false);
+  assert.equal(observed.diagnostic.provider.resultCount, 5);
+  assert.doesNotMatch(readFileSync(new URL("../src/discovery/discoverCompany.mjs", import.meta.url), "utf8"), /\bonDiagnostic\b/);
 });
 
 test("domain input remains anchored and contradictory retargeting stops safely", async () => {

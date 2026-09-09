@@ -51,8 +51,8 @@ test("smoke output is transient review metadata without a key or raw response ob
 
 test("smoke imports production B2 code and has no persistence, polling, or duplicate request path", () => {
   const source = readFileSync(new URL("../scripts/phase-b2-live-smoke.mjs", import.meta.url), "utf8");
-  assert.match(source, /from "\.\.\/src\/discovery\/discoverCompany\.mjs"/);
+  assert.match(source, /discoverCompanyForSmoke/);
   assert.doesNotMatch(source, /node:(?:fs|http|https)/);
   assert.doesNotMatch(source, /writeFile|appendFile|createWriteStream|setInterval|while\s*\(/);
-  assert.equal((source.match(/discoverCompany\(/g) ?? []).length, 1);
+  assert.equal((source.match(/discoverCompanyForSmoke\(/g) ?? []).length, 1);
 });
