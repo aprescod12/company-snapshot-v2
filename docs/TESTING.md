@@ -619,6 +619,19 @@ Independent review found no safety defect or provider-access addition. It identi
 
 No live provider request occurred. B2 remains unapproved and B3 remains unstarted.
 
+### B2R3 — corrected production broad-discovery live gate
+
+| Measure | Observed result |
+| --- | --- |
+| Preflight | `main`, local `HEAD`, and `origin/main` were `635ba5214e5e485219801880dfc811867726ad8d`; clean tree; `.env` ignored, untracked, and unstaged without inspection. Static inspection found one smoke discovery invocation and one underlying provider `fetch`, with no retry, polling, provider loop, fallback, or source-page request. |
+| Stripe-name command | Invoked once exactly as authorized with `--confirmed-free-starter`; stopped locally with sanitized error `EXA_API_KEY is not set.` |
+| Provider observations | None: no request reached Exa, so B2/B1 state, identity, field grounding, aggregates, queue, candidate review, latency, and cost are unavailable. |
+| Conditional domain command | Not authorized and not run because the name case did not reach `ready_for_verification`. |
+| Provider accounting | Starting cumulative Exa: 12; Stripe-name Exa requests: 0; Stripe-domain Exa requests: 0; B2R3 Exa requests: 0; retries: 0; ending cumulative Exa: 12. |
+| Outcome | Operational status: `B2R3 PRE-FLIGHT BLOCKED — CREDENTIAL/ENVIRONMENT UNAVAILABLE`; required classification: `B2R3 NAME GATE FAIL`. This is an execution/pre-provider blocker, not a live B2 behavior result. |
+
+No alternate credential-loading route, retry, provider request, fallback, source verification, implementation patch, B3, endpoint, UI, deployment, or later-phase work occurred. No raw provider response, credential, authorization header, or temporary provider artifact was persisted. B2 remains pending project-owner post-run review; B3 remains not started.
+
 ## Phase C
 _Not yet run._
 
