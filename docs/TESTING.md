@@ -458,6 +458,29 @@ Human review grouped Stripe ranks `4/5/8` as checkout-optimization overlap and P
 
 Result: **`A4.3 SIGNAL BENCHMARK FAIL`**. There was 1 confirmed pass among 3 evaluated companies and 1 confirmed pass across the fixed 5-company cohort. After two new insufficiencies, the maximum achievable coverage was **3/5**, below the required **4/5**, so stopping before Canva and `notion.so` was mandatory. This is evidence against representative coverage for the fixed discovery → selector signal path; it is not evidence of a selector failure, company-resolution behavior, description quality, edge behavior, production source verification, endpoint/UI readiness, deployment readiness, or full provider/product GO.
 
+### Exa A4.3R1 — bounded retrieval repair spike
+
+Implementation and live verification date: 2026-09-09
+
+| Measure | Contract and observed result |
+| --- | --- |
+| Baseline | `176a9e6b94e7bd31123a5cdf9c3306eae553d8fc` on `main`, matching `origin/main`; clean worktree/index before changes or provider access |
+| Objective | Test whether one fixed generic source-quality/novelty instruction can make the previously insufficient raw set contain ≥3 qualifying distinct ≤180-day events |
+| One-variable change | Exact top-level `systemPrompt`: `Prefer first-party company announcements and reputable independent reporting. Return distinct company-level events. Avoid SEO/affiliate pages, generic roundups, evergreen content, rumors, and duplicate coverage.` |
+| Preserved request/selection contract | A4.1 `POST /search`, generic signal query, `auto`, 10 results, highlights enabled, no filters/schema/category/domains/second model/synthesis/retry; direct unchanged A4.2 selector handoff |
+| Order and stop rule | Stripe first; PostHog only after Stripe raw sufficiency; stop immediately on fewer than 3 Stripe events |
+| Pre-live checks | Syntax checks passed; discovery/selector/repair focused tests 42/42; full suite 81/81; `git diff --check` passed; independent contract review found no blocker |
+| Requests | Stripe 1, PostHog 0; A4.3R1 total 1; retries 0; cumulative Exa total 6 |
+
+| Company | Raw-set and selector result | Manual qualifying count | Outcome |
+| --- | --- | --- | --- |
+| Stripe | 1,498 ms; $0.007; 10 raw/dated/highlighted, 4 domains; selected `2,1,3`; no selector clusters | 2 distinct: rank 2 ≤90 days and rank 6 in 91–180-day fallback | `RETRIEVAL REPAIR INSUFFICIENT` |
+| PostHog | Not requested: Stripe early-stop gate | Not evaluated | Not evaluated |
+
+All ten exact Stripe destinations were reviewed without a replacement-source search. Two first-party destinations supported qualifying events; inaccessible SEO-style claims, inaccessible purported partnership coverage, generic commentary, a rumor, and old/retrospective Agentic Commerce coverage did not. Human duplicate groups were checkout commentary `3/4/7` and Agentic Commerce coverage `9/10`; the selector assigned no clusters. The selected three were not all valid because ranks 1 and 3 were rejected, but the antecedent raw set had only two qualifying events.
+
+Result: **`RETRIEVAL REPAIR FAIL`**. The fixed instruction did not repair Stripe raw retrieval sufficiency in this bounded fresh sample, so PostHog was prohibited and no further provider request occurred. This does not change historical A4.3 or A4.3R0, prove a selector-only defect, approve a recency-policy change, or authorize further retrieval/architecture work. Complete per-rank evidence is in `docs/PHASE_A_RETRIEVAL_REPAIR.md`.
+
 ## Phase B
 _Not yet run._
 
