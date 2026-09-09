@@ -518,7 +518,24 @@ The exact returned destinations were inspected without replacement-source search
 Result: **`FALLBACK FEASIBLE`; `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`.** This validates only the small bounded fallback direction in one Stripe case. It does not prove production company resolution, verification implementation, universal fallback reliability, synthesis, endpoint/UI behavior, or deployment. See `docs/PHASE_A_FALLBACK_FEASIBILITY.md`.
 
 ## Phase B
-_Not yet run._
+
+### B1 — provider-independent company targeting / identity safety
+
+Implementation and verification date: 2026-09-09
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | Dependency-free local ESM module and focused tests only; no selector changes |
+| Input preparation | Name input is trimmed/normalized without domain guessing; common URL/domain forms normalize to a lowercase hostname anchor; malformed, credential-bearing, unsupported-protocol, bare-host, localhost, and IP inputs require clarification |
+| Name identity | Requires non-empty compatible name, valid non-local proposed domain, and an exact-root/subdomain corroborating HTTP(S) evidence URL |
+| Domain identity | Retains the submitted hostname; supplied identity evidence must corroborate that same root/subdomain or clarification is returned |
+| Deceptive domains | Exact-root/subdomain comparison rejects prefix and suffix impostors such as `stripe.com.example.test` and `notstripe.com` |
+| Mercury regression | `Mercury` plus internally corroborated `shipmercury.com` evidence returns `clarification_needed`; no company-specific production branch exists |
+| Provider activity | Exa 0; Gemini 0; Tavily 0; Groq 0; other external API requests 0; cumulative Exa experimental requests remain 7 |
+| Live validation | Not authorized or run; the separate Mercury/Stripe live identity gate remains pending |
+| Local verification | `node --check src/targeting/companyTarget.mjs`; `node --check test/company-target.test.mjs`; focused `node --test test/company-target.test.mjs` 10/10; full `node --test test/*.test.mjs` 96/96; `git diff --check` passed |
+
+Result: **`B1 DETERMINISTIC IMPLEMENTATION COMPLETE`**. Independent review initially found unsafe contradictory domain-evidence handling and acceptance of non-public hostname anchors; both were corrected before the final passing syntax, focused, full-suite, and diff checks. B2 broad discovery, verification/backfill, synthesis, endpoint/UI, deployment, and all live identity validation remain unstarted.
 
 ## Phase C
 _Not yet run._

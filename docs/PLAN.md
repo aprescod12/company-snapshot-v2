@@ -2,7 +2,7 @@
 
 ## Status
 
-**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`, A4.3R0 remains `NO POLICY CHANGE YET`, and A4.3R1 remains `RETRIEVAL REPAIR FAIL`. A4.5 validated the frozen conditional official-domain fallback on Stripe, so Phase A is `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`. The small direction remains one broad Exa discovery pass, bounded source verification/backfill, and at most one fallback. Cumulative Exa requests are 7.**
+**A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`, A4.3R0 remains `NO POLICY CHANGE YET`, and A4.3R1 remains `RETRIEVAL REPAIR FAIL`. A4.5 validated the frozen conditional official-domain fallback on Stripe, so Phase A is `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`. B1 now provides the provider-independent targeting/identity-safety boundary; B2 and all live B1 validation remain unstarted. The small direction remains one broad Exa discovery pass, bounded source verification/backfill, and at most one fallback. Cumulative Exa requests are 7.**
 
 This document records the current approved V2 product and technical decisions. On 2026-09-08, the approved Gemini and Exa A3 NVIDIA hypotheses failed their bounded gates. A4.1 subsequently showed that a dedicated signal-oriented Exa query could retrieve enough qualifying raw NVIDIA candidates, and A4.2's deterministic selector chose three supported, material, distinct first-party events in its separate NVIDIA smoke. A4.3 then reused that pass and tested the same fixed pipeline on Stripe and PostHog. Both new raw sets contained only two qualifying distinct events under the approved 180-day policy, so each was `DISCOVERY INSUFFICIENT`; the mandatory early-stop rule prevented Canva and `notion.so` requests after maximum possible coverage fell to 3/5. A4.3R0 later found that broader sparse policies would make PostHog's raw set sufficient but would not change the frozen selector's invalid `3,2,7` selection; Stripe remains insufficient under defensible qualitative safeguards. A4.3R1 tested exactly one fresh retrieval change—a fixed source-quality/novelty `systemPrompt`—and Stripe again had only two qualifying raw events, so it early-stopped before PostHog. A4.4 froze the small direction: Exa remains primary discovery, the selector is prioritization/light dedupe rather than final evidence approval, and verification can use one official-domain fallback only to fill missing slots. A4.5 then found distinct, supported first-party Stripe fallback events beyond the two preserved broad-pass signals. Phase A is approved for implementation, but no implementation phase began here.
 
@@ -428,6 +428,14 @@ input
 
 **Exit:** route reproduces approved benchmark behavior and focused tests pass.
 
+### B1 — Company targeting / resolution
+
+**2026-09-09 outcome: deterministic implementation complete.** `src/targeting/companyTarget.mjs` prepares a trimmed company-name target without guessing an official domain, or a normalized non-local hostname anchor from common domain/URL input. It rejects malformed, credential-bearing, unsupported-protocol, bare-host, localhost, and IP website inputs.
+
+Later identity evidence is evaluated without a network call. Name targets require a non-empty consistent resolved name, a non-local proposed domain, and an exact-root/subdomain evidence URL that corroborates it. Domain targets retain the submitted domain and require any supplied identity evidence to name and corroborate that same domain; contradictory or incomplete evidence returns clarification rather than retargeting. The generic conservative name/domain rule protects the Mercury / `shipmercury.com` regression without a company-specific branch.
+
+This B1 result authorizes neither the separately gated live Mercury/Stripe identity validation nor B2 broad Exa discovery. It made zero provider requests; cumulative Exa experimental requests remain 7.
+
 ## Phase C — Frontend
 Build the required one-page experience:
 - input;
@@ -517,10 +525,10 @@ Reuse is allowed only when the V2 task benefits materially and the reused code d
 
 ---
 
-# 11. Current sequence after A4.5
+# 11. Current sequence after B1
 
 1. Phase A is architecture-approved from the bounded broad-first plus one official-domain-fallback evidence.
-2. Obtain a new full-context authorization before beginning Phase B production implementation.
-3. Build the approved small pipeline, then the UI, deployment, and production verification in separately authorized phases.
+2. B1's deterministic company targeting and identity-safety boundary is complete with no provider access.
+3. Obtain a new full-context authorization before the separately gated live B1 identity validation or B2 broad Exa discovery; then continue UI, deployment, and production verification in separately authorized phases.
 
-No production application implementation began during A4.5.
+No B2, source verification, synthesis, endpoint, UI, deployment, or other later-phase work began during B1.

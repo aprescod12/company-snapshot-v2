@@ -15,7 +15,7 @@ All production company information must come from the live public web. No mock o
 
 ## Status
 
-**Phase A is `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`: one broad Exa discovery pass, bounded verification, and at most one official-domain fallback. A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`; A4.3R0 remains `NO POLICY CHANGE YET`; and A4.3R1 remains `RETRIEVAL REPAIR FAIL`.**
+**Phase A is `PHASE A ARCHITECTURE APPROVED FOR IMPLEMENTATION`: one broad Exa discovery pass, bounded verification, and at most one official-domain fallback. B1's deterministic company-targeting boundary is complete; B2 and the separately authorized live B1 identity gate remain unstarted. A4.3 remains `A4.3 SIGNAL BENCHMARK FAIL`; A4.3R0 remains `NO POLICY CHANGE YET`; and A4.3R1 remains `RETRIEVAL REPAIR FAIL`.**
 
 The approved Gemini 2.5 Flash hypothesis failed its one-request NVIDIA smoke because that model was unavailable to the new-user project. The later Exa NVIDIA smoke made exactly one request through the verified Free Tier/no-payment path. Exa returned a structurally valid snapshot and grounding, but manual review found an assessment-trivial repository change, a 239-day-old signal from a weak secondary source, and an acquisition claim whose generic source destination was inaccessible and did not materially support the event. The tested Exa `auto + outputSchema + output.grounding` final-snapshot hypothesis is therefore `NO-GO`.
 
@@ -30,6 +30,8 @@ A4.3R0 used no provider access and preserved that historical result. It found th
 A4.3R1 then made one new Stripe request with the A4.1 retrieval contract unchanged except for one fixed source-quality/novelty `systemPrompt`. Exact-destination review again found only two qualifying distinct ≤180-day events. The frozen selector selected `2,1,3`, including two rejected candidates, but raw insufficiency triggered the required early stop before PostHog. The repair is therefore not supported; A4.3R1 made 1 request with zero retries and cumulative Exa requests are 6.
 
 A4.4 froze the smallest evidence-supported direction: Exa remains the primary discovery provider, but the one-search → selector → final-three shape is rejected. A4.5 then tested its only conditional branch with one Stripe official-domain fallback. It returned a distinct, supported August 19 OpenRouter acquisition beyond the preserved FX and Lloyds signals, so Phase A is approved for implementation. The ceiling remains two discovery requests per company; if the bounded path fails in a later appropriately authorized case, the product must return honest insufficient evidence rather than add layers.
+
+B1 adds a dependency-free local boundary for user company targeting and later identity confirmation. It treats domain/URL input as a normalized hostname anchor, keeps name input provisional without guessing a domain, and returns clarification for unsupported, malformed, contradictory, or uncorroborated identity evidence. Its generic hostname and name/domain consistency checks cover the historical Mercury / `shipmercury.com` wrong-entity pattern without company-specific code. B1 made no provider request, leaves cumulative Exa experimental requests at 7, and does not include the separately gated live identity check or B2 discovery.
 
 Current provider decision sequence:
 
@@ -72,7 +74,7 @@ This is a clean V2 repository. V1 remains separate as historical research, empir
 
 ## Setup
 
-There is no production application setup yet. The Phase A diagnostics require Node.js 22 and provider keys supplied through the environment; never commit a value or a `.env` file. The current Exa smoke requires the operator to independently confirm the key belongs to a Starter account with no payment method, paid usage, or auto-recharge before passing the confirmation flag.
+There is no server endpoint or frontend yet. B1 is a dependency-free local Node ESM module; the Phase A diagnostics require Node.js 22 and provider keys supplied through the environment. Never commit a value or a `.env` file. The current Exa smoke requires the operator to independently confirm the key belongs to a Starter account with no payment method, paid usage, or auto-recharge before passing the confirmation flag.
 
 ```bash
 node scripts/gemini-phase-a.mjs smoke --company NVIDIA --confirmed-unbilled
