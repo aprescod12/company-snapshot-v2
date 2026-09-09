@@ -252,6 +252,7 @@ export function evaluateIdentityGate(company, providerResult) {
   const identityResult = confirmCompanyIdentity(target, {
     ...providerResult.identity,
     evidenceUrls: providerResult.evidenceUrls,
+    groundingByField: providerResult.groundingByField,
   });
   return { target, identityResult, rawResultStats: candidateStats(providerResult.discovery.candidates) };
 }

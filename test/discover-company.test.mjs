@@ -51,12 +51,15 @@ test("clear name resolves through B1 and exposes the full prioritized verificati
 });
 
 test("ambiguous and unsupported name evidence quarantine candidates", async () => {
-  for (const value of [
-    payload({ identity: { resolvedCompanyName: "Mercury", officialDomain: "mercury.com", ambiguous: true } }),
-    payload({ evidenceDomain: "unrelated.test" }),
+  for (const { input, value } of [
+    {
+      input: "Mercury",
+      value: payload({ identity: { resolvedCompanyName: "Mercury (Fintech) and Mercury Systems (Aerospace/Defense)", officialDomain: "mercury.com", ambiguous: true }, evidenceDomain: "mercury.com" }),
+    },
+    { input: "Stripe", value: payload({ evidenceDomain: "unrelated.test" }) },
   ]) {
     const calls = { count: 0 };
-    const result = await discoverCompany(value.output.content.resolvedCompanyName === "Mercury" ? "Mercury" : "Stripe", "test-key", {
+    const result = await discoverCompany(input, "test-key", {
       now: NOW,
       fetchImpl: fetchPayload(value, calls),
     }).catch((error) => ({ error }));
@@ -68,6 +71,19 @@ test("ambiguous and unsupported name evidence quarantine candidates", async () =
       assert.equal(result.state, "clarification_needed");
     }
   }
+});
+
+test("captured B2R1 Stripe identity resolves only through the strict same-entity path", async () => {
+  const calls = { count: 0 };
+  const result = await discoverCompany("Stripe", "test-key", {
+    now: NOW,
+    fetchImpl: fetchPayload(payload({
+      identity: { resolvedCompanyName: "Stripe, Inc.", officialDomain: "stripe.com", ambiguous: true },
+    }), calls),
+  });
+  assert.equal(calls.count, 1);
+  assert.equal(result.state, "ready_for_verification");
+  assert.deepEqual(result.company, { inputKind: "name", companyName: "Stripe, Inc.", officialDomain: "stripe.com" });
 });
 
 test("missing ambiguity is a safe clarification rather than a verification-ready response", async () => {
@@ -104,21 +120,36 @@ test("smoke path hands B1 the exact parsed identity plus combined exact groundin
     buildIdentityEvidence({
       identity: observed.diagnostic.identity,
       evidenceUrls: ["https://stripe.com/about"],
+      groundingByField: {
+        resolvedCompanyName: ["https://stripe.com/about"],
+        officialDomain: ["https://stripe.com/about"],
+      },
     }),
     {
       resolvedCompanyName: "Stripe",
       officialDomain: "stripe.com",
       ambiguous: false,
       evidenceUrls: ["https://stripe.com/about"],
+      groundingByField: {
+        resolvedCompanyName: ["https://stripe.com/about"],
+        officialDomain: ["https://stripe.com/about"],
+      },
     },
   );
 });
 
-test("smoke diagnostics are sanitized while production clarification remains queue-free", async () => {
+test("smoke diagnostics are sanitized while unsafe ambiguity remains queue-free", async () => {
   const calls = { count: 0 };
-  const observed = await discoverCompanyForSmoke("Stripe", "test-key", {
+  const observed = await discoverCompanyForSmoke("Mercury", "test-key", {
     now: NOW,
-    fetchImpl: fetchPayload(payload({ identity: { resolvedCompanyName: "Stripe", officialDomain: "stripe.com", ambiguous: true } }), calls),
+    fetchImpl: fetchPayload(payload({
+      identity: {
+        resolvedCompanyName: "Mercury (Fintech) and Mercury Systems (Aerospace/Defense)",
+        officialDomain: "mercury.com",
+        ambiguous: true,
+      },
+      evidenceDomain: "mercury.com",
+    }), calls),
   });
   assert.equal(calls.count, 1);
   assert.deepEqual(observed.result, { state: "clarification_needed", reason: "insufficient_identity_evidence" });

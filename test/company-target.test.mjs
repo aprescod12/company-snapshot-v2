@@ -19,6 +19,18 @@ function evidence(overrides = {}) {
   };
 }
 
+function strictAmbiguousEvidence(overrides = {}) {
+  return evidence({
+    resolvedCompanyName: "Stripe, Inc.",
+    ambiguous: true,
+    groundingByField: {
+      resolvedCompanyName: ["https://stripe.com/about"],
+      officialDomain: ["https://stripe.com/legal"],
+    },
+    ...overrides,
+  });
+}
+
 test("name input is normalized without inventing an official domain", () => {
   assert.deepEqual(prepareCompanyTarget("Stripe"), {
     status: TARGET_STATUS.PREPARED,
@@ -127,6 +139,34 @@ test("name evidence requires explicit unambiguous valid corroborated identity ev
   }
 });
 
+test("strict same-entity ambiguity evidence resolves the captured Stripe shape", () => {
+  assert.deepEqual(confirmCompanyIdentity(prepareCompanyTarget("Stripe"), strictAmbiguousEvidence()), {
+    status: TARGET_STATUS.RESOLVED,
+    kind: TARGET_KIND.NAME,
+    companyName: "Stripe, Inc.",
+    officialDomain: "stripe.com",
+  });
+});
+
+test("ambiguous names require strict matching and field-specific first-party corroboration", () => {
+  const target = prepareCompanyTarget("Stripe");
+  for (const candidate of [
+    strictAmbiguousEvidence({ resolvedCompanyName: "Stripe Payments" }),
+    strictAmbiguousEvidence({ groundingByField: { officialDomain: ["https://stripe.com/legal"] } }),
+    strictAmbiguousEvidence({ groundingByField: { resolvedCompanyName: ["https://stripe.com/about"] } }),
+    strictAmbiguousEvidence({
+      groundingByField: {
+        resolvedCompanyName: ["https://example.test/about"],
+        officialDomain: ["https://example.test/legal"],
+      },
+    }),
+    strictAmbiguousEvidence({ officialDomain: "other.test" }),
+    strictAmbiguousEvidence({ contradictory: true }),
+  ]) {
+    assert.equal(confirmCompanyIdentity(target, candidate).status, TARGET_STATUS.CLARIFICATION_NEEDED);
+  }
+});
+
 test("deceptive hostnames do not corroborate an official domain", () => {
   const target = prepareCompanyTarget("Stripe");
   for (const url of ["https://stripe.com.example.test/news", "https://notstripe.com/news", "https://stripe-company.com/news"]) {
@@ -173,10 +213,14 @@ test("domain input retains its submitted anchor and rejects provider retargeting
 
 test("Mercury ambiguity requires clarification without a lexical domain rule", () => {
   const result = confirmCompanyIdentity(prepareCompanyTarget("Mercury"), {
-    resolvedCompanyName: "Mercury",
-    officialDomain: "shipmercury.com",
-    evidenceUrls: ["https://shipmercury.com/news/example"],
+    resolvedCompanyName: "Mercury (Fintech) and Mercury Systems (Aerospace/Defense)",
+    officialDomain: "mercury.com",
+    evidenceUrls: ["https://mercury.com/news/example"],
     ambiguous: true,
+    groundingByField: {
+      resolvedCompanyName: ["https://mercury.com/news/example"],
+      officialDomain: ["https://mercury.com/news/example"],
+    },
   });
   assert.equal(result.status, TARGET_STATUS.CLARIFICATION_NEEDED);
 });

@@ -10,6 +10,7 @@ export function buildIdentityEvidence(providerResult) {
   return {
     ...providerResult.identity,
     evidenceUrls: providerResult.evidenceUrls,
+    groundingByField: providerResult.groundingByField,
   };
 }
 

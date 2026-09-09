@@ -587,6 +587,24 @@ Live verification date: 2026-09-09
 
 The observed immediate cause was `ambiguous: true`, not missing identity fields or missing field-specific grounding. The B1 boundary therefore safely refused to resolve the company. No retry, `stripe.com` request, other company, fallback, source verification, code patch, B3, or later work occurred. This single result does not approve B2 or decide whether occasional safe clarification is acceptable production UX.
 
+### B2R2 — narrow deterministic ambiguity correction
+
+Implementation and verification date: 2026-09-09
+
+| Measure | Observed result |
+| --- | --- |
+| Provider activity | Exa 0; other providers 0; retries 0; cumulative Exa experimental requests remain 12 |
+| `ambiguous: false` path | Unchanged: compatible name plus combined domain-corroborating evidence resolves |
+| `ambiguous: true` path | Requires strict normalized-name equality and a domain-corroborating exact HTTP(S) URL in each field-specific grounding array |
+| B2R1 Stripe fixture | `Stripe` / `Stripe, Inc.` / `stripe.com` with valid field-specific `stripe.com` grounding resolves |
+| Mercury fixture | `Mercury` / `Mercury (Fintech) and Mercury Systems (Aerospace/Defense)` remains `clarification_needed` |
+| Negative cases | Loose prefix, missing resolved-name grounding, missing official-domain grounding, non-corroborating grounding, contradictory evidence, and missing ambiguity clarify |
+| Domain input | Existing submitted-domain anchoring and retargeting rejection remain unchanged |
+| Focused verification | 42/42 relevant tests passed; syntax checks passed |
+| Full verification | `node --test test/*.test.mjs` — 130/130 passed |
+
+Independent review found no safety defect or provider-access addition. It identified two test-coverage gaps—the Mercury orchestration fixture was no longer invoked with `Mercury`, and strict-path contradictory-domain coverage was absent—which were corrected before final verification. This correction does not approve B2, authorize a new live request, or begin B3.
+
 ## Phase C
 _Not yet run._
 

@@ -109,6 +109,12 @@ test("the gate sends false identity through exact relevant grounding into B1", a
   assert.deepEqual(result.providerResult.evidenceUrls, ["https://stripe.com/about", "https://stripe.com/legal"]);
   assert.equal(result.evaluation.identityResult.status, "resolved");
   assert.equal(result.evaluation.identityResult.officialDomain, "stripe.com");
+  assert.deepEqual(result.evaluation.identityResult, {
+    status: "resolved",
+    kind: "name",
+    companyName: "Stripe",
+    officialDomain: "stripe.com",
+  });
   assert.deepEqual(result.evaluation.rawResultStats, {
     resultCount: 2,
     datedCount: 1,

@@ -78,3 +78,24 @@ The separately authorized B2R1 rerun made exactly one Stripe-name Exa request an
 The classification is **`B2R1 REPEAT SAFE FAILURE — CAUSE OBSERVED`**. The immediate cause is the provider-returned `ambiguous: true`: identity fields and their field-specific grounding were present, but B1 correctly refused to resolve an explicitly ambiguous result. This does not prove deterministic integration success, approve B2, or decide whether occasional safe clarification is acceptable production UX.
 
 Starting cumulative Exa requests were 11; B2R1 used 1 request with 0 retries; ending cumulative requests are 12. After the response, provider activity stopped. No `stripe.com` request, other company, official-domain fallback, source verification, code patch, B3, or later work occurred. No raw provider JSON, full highlights, credentials, or temporary response dump was persisted.
+
+## B2R2 — narrow deterministic ambiguity correction
+
+B2R2 made **0 provider requests**. It changes only the existing B1 identity boundary and its existing parsed-evidence handoff; no Exa request body, schema, selector, retry behavior, fallback, source verification, endpoint, UI, or B3 code changed.
+
+For a name target with `ambiguous: false`, the previous behavior is unchanged: B1 uses the existing compatible-name rule, including its established conservative prefix allowance, and requires combined evidence to corroborate the proposed official domain. Missing or undefined ambiguity still returns `clarification_needed`.
+
+For `ambiguous: true`, B1 now accepts only this strict same-entity exception:
+
+1. submitted and resolved names are equal after the existing conservative normalization and legal-suffix removal;
+2. the proposed official domain is valid under the existing hostname rules;
+3. `resolvedCompanyName` and `officialDomain` each have their own grounding array; and
+4. each array contains an exact HTTP(S) root/subdomain URL corroborating that proposed domain, with no contradiction flag.
+
+This path never uses the existing prefix rule. It has no aliases, fuzzy matching, scoring, provider-specific branch, or company-specific behavior. Domain-input anchoring is unchanged.
+
+The local B2R1 fixture (`Stripe` → `Stripe, Inc.` / `stripe.com` / `ambiguous: true` with field-specific `stripe.com` grounding) now resolves. The historical Mercury response (`Mercury` → `Mercury (Fintech) and Mercury Systems (Aerospace/Defense)` / `mercury.com` / `ambiguous: true`) remains clarification-needed because the normalized names are not equal. Additional regressions prove safe clarification for loose prefix-only matches, missing either field grounding, non-corroborating/contradictory domain evidence, and missing ambiguity.
+
+Zero-network verification passed: syntax checks; 42/42 focused B1/B2 tests; and the complete `node --test test/*.test.mjs` suite at 130/130. An independent reviewer found no safety defect, provider access, hardcoding, abstraction creep, or domain-anchor regression. It caught two fixture-coverage gaps—an outdated Mercury input selection and missing strict-path contradictory-domain coverage—which were fixed before the final run.
+
+B2R2 does not approve B2 or authorize another live request. Cumulative Exa experimental requests remain **12**. B3 and all later work remain unstarted.

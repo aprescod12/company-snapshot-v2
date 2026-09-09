@@ -100,6 +100,12 @@ function namesAreConsistent(submittedName, resolvedName) {
   return submittedText === resolvedText || resolvedText.startsWith(`${submittedText} `);
 }
 
+function namesStrictlyMatch(submittedName, resolvedName) {
+  const submitted = normalizedWords(submittedName);
+  const resolved = normalizedWords(resolvedName);
+  return submitted.length > 0 && submitted.join(" ") === resolved.join(" ");
+}
+
 function isSameDomainOrSubdomain(hostname, officialDomain) {
   return hostname === officialDomain || hostname.endsWith(`.${officialDomain}`);
 }
@@ -127,6 +133,16 @@ function evidenceCorroboratesDomain(evidenceUrls, officialDomain) {
       const parsed = parseHttpUrl(value);
       return parsed && isSameDomainOrSubdomain(normalizeHostname(parsed.hostname), officialDomain);
     })
+  );
+}
+
+function fieldSpecificGroundingCorroboratesDomain(groundingByField, officialDomain) {
+  if (!groundingByField || typeof groundingByField !== "object" || Array.isArray(groundingByField)) {
+    return false;
+  }
+  return (
+    evidenceCorroboratesDomain(groundingByField.resolvedCompanyName, officialDomain) &&
+    evidenceCorroboratesDomain(groundingByField.officialDomain, officialDomain)
   );
 }
 
@@ -169,7 +185,7 @@ export function prepareCompanyTarget(rawInput) {
  * Evidence URLs must be complete HTTP(S) URLs. `officialDomain` is a hostname only.
  *
  * @param {ReturnType<typeof prepareCompanyTarget>} target
- * @param {{resolvedCompanyName?: unknown, officialDomain?: unknown, evidenceUrls?: unknown, ambiguous?: unknown, contradictory?: unknown}|undefined} identityEvidence
+ * @param {{resolvedCompanyName?: unknown, officialDomain?: unknown, evidenceUrls?: unknown, groundingByField?: unknown, ambiguous?: unknown, contradictory?: unknown}|undefined} identityEvidence
  * @returns {{status: "resolved", kind: "name"|"domain", companyName: string|null, officialDomain: string}|{status: "clarification_needed", reason: string}}
  */
 export function confirmCompanyIdentity(target, identityEvidence) {
@@ -221,18 +237,28 @@ export function confirmCompanyIdentity(target, identityEvidence) {
   const resolvedCompanyName =
     typeof evidence.resolvedCompanyName === "string" ? normalizeName(evidence.resolvedCompanyName) : "";
   const proposedDomain = normalizeEvidenceDomain(evidence.officialDomain);
-  if (
-    evidence.ambiguous !== false ||
-    !resolvedCompanyName ||
-    !proposedDomain ||
-    !Array.isArray(evidence.evidenceUrls)
-  ) {
+  if (!resolvedCompanyName || !proposedDomain) {
     return clarification("insufficient_identity_evidence");
   }
-  if (!namesAreConsistent(target.companyName, resolvedCompanyName)) {
-    return clarification("contradictory_identity");
-  }
-  if (!evidenceCorroboratesDomain(evidence.evidenceUrls, proposedDomain)) {
+
+  if (evidence.ambiguous === false) {
+    if (!Array.isArray(evidence.evidenceUrls)) {
+      return clarification("insufficient_identity_evidence");
+    }
+    if (!namesAreConsistent(target.companyName, resolvedCompanyName)) {
+      return clarification("contradictory_identity");
+    }
+    if (!evidenceCorroboratesDomain(evidence.evidenceUrls, proposedDomain)) {
+      return clarification("insufficient_identity_evidence");
+    }
+  } else if (evidence.ambiguous === true) {
+    if (!namesStrictlyMatch(target.companyName, resolvedCompanyName)) {
+      return clarification("insufficient_identity_evidence");
+    }
+    if (!fieldSpecificGroundingCorroboratesDomain(evidence.groundingByField, proposedDomain)) {
+      return clarification("insufficient_identity_evidence");
+    }
+  } else {
     return clarification("insufficient_identity_evidence");
   }
 
