@@ -2,13 +2,13 @@
 
 ## Outcome
 
-**`B1 LIVE IDENTITY GATE SAFE AMBIGUITY`** on 2026-09-09, after the first authorized Mercury request stopped on a format blocker and a separately authorized one-request parser correction/rerun completed.
+**`B1 LIVE IDENTITY GATE PASS`** on 2026-09-09. The complete chronology is: a first Mercury format blocker; a narrow parser correction; a second Mercury request that safely clarified genuine ambiguity; then one separately authorized Stripe positive-control request that positively resolved a clear name.
 
 This bounded experiment tested whether the same broad Exa Search request already approved for signal discovery could also return provider-grounded B1 company identity evidence when the only request-body addition was a minimal identity `outputSchema`. It was not B2 and did not change production targeting, discovery, verification, synthesis, endpoint, UI, deployment, or provider strategy.
 
 ## Contract and limits
 
-The Mercury request was the first and only new request. It used `POST https://api.exa.ai/search` with the existing A4.1 generic signal-discovery query for Mercury, `type: "auto"`, `numResults: 10`, `contents: { highlights: true }`, `stream: false`, and only this additional schema:
+Each B1 request used `POST https://api.exa.ai/search` with the existing A4.1 generic signal-discovery query for its approved company, `type: "auto"`, `numResults: 10`, `contents: { highlights: true }`, `stream: false`, and only this additional schema:
 
 ```js
 {
@@ -61,9 +61,39 @@ Manual review opened only those returned destinations. The three `mercury.com` p
 
 Stripe was not requested. Mercury requests across B1 live work: 2; Stripe: 0; retries: 0; new Exa requests in the rerun task: 1; cumulative Exa experimental requests: 9.
 
-## Decision and limits
+## Stripe positive control — positive resolution
 
-The final decision is **SAFE AMBIGUITY**. The first attempt remains a factual format-blocker failure; the second demonstrates that, under the frozen one-broad-request identity gate, B1 safely clarifies a genuinely ambiguous Mercury result. It is not evidence that a clear-company identity can be resolved universally, a parser/retrieval redesign is warranted, or Stripe/B2 should begin. Stripe remains separately gated and requires project-owner review/authorization.
+The final separately authorized B1 request used the identical frozen body and schema for `Stripe`, with both the Free Starter and prior-Mercury-safe attestations. It returned:
+
+| Field | Provider result |
+| --- | --- |
+| `resolvedCompanyName` | `Stripe` |
+| `officialDomain` | `stripe.com` |
+| `ambiguous` | `false` |
+| B1 result | `resolved` / no reason |
+| Latency / returned cost | 3,409 ms / $0.007 |
+| Raw result aggregate | 10 results; 9 dated; 10 highlighted; 4 unique domains |
+
+Exact name grounding was:
+
+- `https://stripe.com/newsroom/news/stripe-helps-meta-muse-shop-with-link`
+- `https://www.rte.ie/news/business/2026/0909/1590856-bank-of-ireland-grows-partnership-deal-with-stripe/`
+- `https://stripe.com/blog/reduce-fx-costs-with-stripe`
+- `https://onlinestorenews.com/stripes-new-stablecoin-settlement-is-rewriting-cross-border-checkout/`
+- `https://stripe.com/newsroom/news/lloyds-and-stripe`
+- `https://onlinestorenews.com/stripes-new-adaptive-checkout-is-quietly-reshuffling-the-payment-stack-3/`
+- `https://onlinestorenews.com/stripes-new-adaptive-pricing-engine-is-rewriting-cross-border-checkout-in-2026/`
+- `https://onlinestorenews.com/stripes-optimized-checkout-suite-is-reshaping-how-merchants-think-about-payment-stacks-in-2026/`
+- `https://onlinestorenews.com/is-stripe-quietly-killing-its-startup-discount-program-to-force-teams-onto-optimized-checkout/`
+- `https://www.merchantseye.com/news/dbs-and-stripe-partner-to-accelerate-the-digital-and-ai-powered-economy-in-asia-9b7cec69`
+
+Exact official-domain grounding was the first Stripe newsroom URL, the RTE URL, the Stripe FX blog URL, and the Stripe Lloyds URL above. Manual review opened only those exact destinations: the accessible first-party `stripe.com` newsroom and blog pages identify Stripe and substantively describe its products and partnerships, directly corroborating both the company and `stripe.com`. The RTE, Online Store News, and Merchant's Eye pages were inaccessible through the review tool and were not replaced or supplemented. That access limitation does not undermine the identity result because exact first-party field grounding was accessible and sufficient.
+
+The transient raw candidate set remained broadly signal-oriented: Stripe product/platform developments, partnerships, and independent company coverage rather than mostly generic company-profile pages. It was not treated as a final three-signal qualification or source-quality certification. No untitled results were observed in the transient review output.
+
+## Final decision and limits
+
+The final decision is **`B1 LIVE IDENTITY GATE PASS`** and **`B1 COMPANY TARGETING / RESOLUTION APPROVED FOR PRODUCTION INTEGRATION`**. Mercury demonstrates safe clarification for this genuinely ambiguous input; Stripe demonstrates positive clear-name resolution under the same one-broad-request identity shape. This does not prove universal company-name resolution, justify a parser/retrieval redesign, or begin B2. Mercury requests across B1 are 2, Stripe requests are 1, retries are 0, and cumulative Exa experimental requests are 10.
 
 ## Verification
 
@@ -82,13 +112,13 @@ The mocked tests cover the exact frozen body plus only the schema, allowlist and
 
 ## Phase Completion Report
 
-1. **Work / non-goals.** Preserved the first format blocker, corrected only title parsing, then made one authorized Mercury rerun. Stripe, B2, selector/targeting changes, and all later-phase work were not started.
-2. **Files.** The shared parser/test now accommodate optional titles; the B1 integration test proves handoff; this report and living records retain the two-request chronology.
-3. **Sub-agents.** A parser investigator identified the existing optional-string helper as the smallest correction. A pre-live reviewer approved strict URL preservation and frozen request/schema. A post-live reviewer approved SAFE AMBIGUITY and no architecture change.
-4. **Decisions / deviations.** Only title metadata became optional. The request/schema and B1 contract stayed frozen; no special Mercury behavior was added.
-5. **Independent review.** Reviewers found no blocking issue before the rerun and confirmed the rerun's B1 clarification matched the grounded ambiguity.
-6. **Verification.** The commands and passing results are listed above; final diff, status, and credential hygiene inspection were performed before phase exit.
-7. **Live/manual validation.** First Mercury request format-blocked; second Mercury request safely clarified. Exact returned grounding sources only were reviewed; Yahoo was rate-limited. Stripe was not run.
-8. **Limitations / deferred work.** This proves only a safe ambiguity outcome for this Mercury sample. Stripe remains separately gated; no production-resolution conclusion follows.
-9. **AI failure-log candidates.** The inherited mandatory-title parser is a genuine corrected AI failure and is recorded in `docs/AI_FAILURE_LOG.md`.
-10. **Exit status.** The bounded correction/rerun exited SAFE AMBIGUITY with no later-phase work.
+1. **Work / non-goals.** Made one authorized Stripe positive control after the approved Mercury SAFE AMBIGUITY gate. Mercury was not rerun; B2, selector/targeting changes, and all later-phase work were not started.
+2. **Files.** This report plus `README.md`, `docs/PLAN.md`, and `docs/TESTING.md` record the final B1 result. No production code changed.
+3. **Sub-agents.** A pre-live reviewer confirmed the baseline, frozen body/schema, strict URL parsing, title-only correction, attestation, no persistence/retry, no Stripe-specific targeting, and no B2 work. A post-live reviewer independently classified the result `POSITIVE CONTROL PASS`; neither edited files or used provider access.
+4. **Decisions / deviations.** The request body and three-field schema stayed frozen. There was no deviation, special Stripe resolution behavior, or architecture addition.
+5. **Independent review.** Pre-live review found no blocker. Post-live review confirmed one request/no retry, first-party exact grounding support, correct B1 resolution, signal-oriented raw discovery, and no new architecture need; no fix was required.
+6. **Verification.** The prescribed Node checks and focused suites passed before the request (14/14 discovery, 12/12 gate, 10/10 targeting, 109/109 full suite); post-live verification is recorded below.
+7. **Live/manual validation.** The complete Stripe identity, grounding, source-review, raw-discovery, latency, cost, and B1 handoff findings are recorded above. No replacement-source search occurred.
+8. **Limitations / deferred work.** Two live fixtures do not prove universal resolution; future ambiguous brands may still require clarification. B2 remains unstarted, and production integration still requires B2 implementation/testing.
+9. **AI failure-log candidates.** None; no new genuine AI failure occurred. The prior title-parser failure remains historical and is not duplicated.
+10. **Exit status.** `B1 LIVE IDENTITY GATE PASS`; B1 targeting/resolution is approved for production integration, with no B2/later work begun.
