@@ -156,29 +156,44 @@ Every meaningful implementation or correction prompt must require a concise repo
 
    `Problem | AI mistake | How detected | What changed | Lesson learned`
 
-10. Phase exit status:
+10. Phase exit status (see §4 for the full state model):
    - exit criteria met or not;
    - blockers;
+   - local commit SHA and message;
+   - branch;
+   - explicit confirmation that the commit has not been pushed (or, once push is separately authorized, that it has been pushed and the remote branch confirmed);
    - confirmation that no later-phase work began without approval.
 
 ---
 
-# 4. Mandatory phase-exit git workflow
+# 4. Mandatory phase-exit review-then-push workflow
+
+Phase exit passes through four distinct states. Do not use them interchangeably, and do not treat a coding agent saying "done" or reporting passing tests as more than the first:
+
+1. **Implementation complete locally** — the authorized work is done, verified, and captured in one local commit. Nothing has been reviewed against the actual diff, and nothing has been pushed.
+2. **Reviewed and authorized to push** — ChatGPT/the project owner has reviewed the **actual local diff**, not merely the Phase Completion Report; any required correction has been applied and re-verified; push has been explicitly authorized.
+3. **Pushed and remotely confirmed** — the reviewed commit has been pushed and the remote branch has been confirmed to point at it.
+4. **Phase formally approved** — the project owner has separately approved the phase as complete. Only after this state may a later phase begin.
+
+## Procedure
 
 Before completing each implementation or correction phase:
 
-1. Run required verification.
-2. Inspect `git status`.
-3. Confirm no `.env`, credentials, temporary output, or unintended files are staged.
-4. Commit only when the authorized scope is complete and verification passes.
-5. Push the current branch.
-6. Report:
-   - commit SHA;
-   - commit message;
-   - branch;
-   - verification performed;
-   - confirmation that push succeeded.
-7. Stop. Do not begin later-phase work until the project owner approves advancement.
+1. Perform only the authorized work.
+2. Run the required verification.
+3. Perform bounded independent review where required or useful (§3.7).
+4. Inspect `git diff` and `git status`.
+5. Confirm no `.env`, credentials, scratch files, temporary outputs, or unintended files are staged.
+6. Create one focused **local commit only. Do not push.**
+7. Return the required Phase Completion Report (§3.10), including the local commit SHA, commit message, branch, verification performed, and explicit confirmation that the commit has not been pushed. This reaches **implementation complete locally**.
+8. ChatGPT/the project owner reviews the actual local diff.
+9. If review finds an issue: apply only the authorized correction, rerun the relevant verification, amend the existing local commit (or add one further focused local commit) rather than opening an unrelated new phase commit, and return the corrected local SHA. The phase remains unpushed until review passes.
+10. Once actual-diff review passes, ChatGPT/the project owner explicitly authorizes the push. This reaches **reviewed and authorized to push**.
+11. Push the reviewed commit and confirm that the remote branch points to it. This reaches **pushed and remotely confirmed**.
+12. The project owner formally approves/closes the phase. This reaches **phase formally approved**.
+13. Do not begin a later phase until the current phase reaches **phase formally approved**.
+
+This pre-push actual-diff review gate is part of the normal phase-exit workflow, not an optional courtesy.
 
 ---
 

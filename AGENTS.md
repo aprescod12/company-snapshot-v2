@@ -59,6 +59,8 @@ Every meaningful implementation/correction task must:
 3. ensure no credentials, `.env`, temporary outputs, or unintended files are staged;
 4. update only living docs materially affected by actual work;
 5. provide the required Phase Completion Report from `docs/WORKFLOW.md`;
-6. commit and push only when the authorized scope is complete and verification passes;
-7. report commit SHA, message, branch, verification, and push result;
-8. stop without beginning later-phase work.
+6. create one focused **local commit only — do not push**;
+7. report commit SHA, message, branch, verification performed, and explicit confirmation that the commit has not been pushed;
+8. stop without beginning later-phase work until: the pre-push review gate clears (the actual local diff reviewed, any required correction applied and re-verified, and push explicitly authorized), and the agent then completes the remaining `docs/WORKFLOW.md` §4 phase-exit workflow — pushing, confirming the remote branch, and reaching formal phase approval.
+
+Implementation complete locally, reviewed and authorized to push, pushed and remotely confirmed, and phase formally approved are four distinct states (`docs/WORKFLOW.md` §4). A completion report or passing tests establish only the first.
