@@ -964,7 +964,22 @@ No B1–B5 production `src/` file changed by either diagnostic or by this closur
 | Provider/deployment activity | C1 made 0 Exa Search, 0 Exa Contents, 0 publisher/company, and 0 deployment-validation requests; no live provider or endpoint validation occurred. Cumulative accounting remains Search **42** / Contents **9** / retries **0**. |
 | Protected-path audit | No file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, `src/description/`, `src/snapshot/`, or `src/orchestration/` changed. No dependency or framework was added. |
 
-Result: **`C1 IMPLEMENTED LOCALLY AND ZERO-NETWORK TESTED`**. This establishes the thin HTTP adapter behavior only. It is not deployment validation, frontend completion, broad provider reliability evidence, formal C1 approval, or authorization to begin C2.
+Result at C1 completion: **`C1 IMPLEMENTED LOCALLY AND ZERO-NETWORK TESTED`**. The subsequent required actual-diff review passed; C1 was pushed, remotely confirmed, and formally approved at `e6ce58e91cf7806c6096ca904762218855e63c1c`. This establishes the thin HTTP adapter behavior only; it is not deployment validation or broad provider reliability evidence.
+
+### C2 — one-page frontend
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | Added only `public/index.html`, `public/styles.css`, `public/app.js`, and browser-free native-node coverage in `test/app.test.mjs`; no endpoint, backend, dependency, provider, deployment, or frozen B1–B5 change. |
+| Browser request contract | One intentional submission makes one `POST /api/snapshot` request with exactly JSON `{ input }`. Blank input remains local clarification; a synchronous in-flight guard ignores duplicate submits; the UI disables while loading and restores controls in `finally`. |
+| Public states | Tests cover valid `snapshot` (exactly 3 signals), `clarification_needed` (`invalid_input` and `company_ambiguous`), `insufficient_evidence` (0–2 signals), and sanitized `unavailable`, plus malformed and unknown result rejection. |
+| Presentation and safety | Dynamic text uses DOM nodes and `textContent`, with no `innerHTML`. Safe sources preserve the exact URL, display only the hostname, open with `_blank`/`noopener noreferrer`, and reject `javascript:`, `data:`, `file:`, malformed, and empty URLs. |
+| Visual-polish correction | CSS-only sunset/faceted-shard treatment, a substantially opaque shell refinement, and idle-height rebalance. Decorative markup is `aria-hidden`; decorative CSS cannot receive pointers, is reduced on narrow screens, and respects reduced motion. No functional or backend behavior changed. |
+| Focused zero-network tests | `node --test test/app.test.mjs` — **36/36 passed** after the visual-polish correction. Covers public-result validation, all four rendered public states, date/source fallbacks, request body and endpoint, no-request blank input, update lifecycle, duplicate-submit guard, malformed/JSON/transport failures, source rendering, hostile text rendering, and static dependency/network-scope checks. |
+| Full zero-network suite | `node --test test/*.test.mjs` — **337/337 passed** after the visual-polish correction (301 pre-existing + 36 C2). |
+| Provider/deployment activity | C2 made 0 Exa Search, 0 Exa Contents, 0 publisher/company, 0 live endpoint, and 0 deployment-validation requests. Cumulative accounting remains Search **42** / Contents **9** / retries **0**. |
+
+Result: **`C2 IMPLEMENTED LOCALLY AND ZERO-NETWORK TESTED`**. It is not deployment validation, production endpoint validation, broad provider reliability evidence, a push, or formal C2 approval.
 
 ## Phase D / production
 _Not yet run._

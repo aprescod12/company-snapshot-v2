@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111b2d" />
+    <title>Company Snapshot</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <span class="shard shard-one"></span>
+      <span class="shard shard-two"></span>
+      <span class="shard shard-three"></span>
+      <span class="shard shard-four"></span>
+      <span class="shard shard-five"></span>
+      <span class="shard shard-six"></span>
+    </div>
+    <main class="app-shell" aria-busy="false">
+      <header class="intro">
+        <p class="product-name">Company Snapshot</p>
+        <h1>Recent company intelligence,<br />grounded in public sources.</h1>
+        <p class="lede">A concise, evidence-first view of what a company does and what has changed recently.</p>
+      </header>
+
+      <form id="snapshot-form" class="snapshot-form" novalidate>
+        <label for="company-input">Company name or website</label>
+        <div class="search-controls">
+          <input
+            id="company-input"
+            name="input"
+            type="text"
+            autocomplete="organization"
+            placeholder="Stripe or notion.so"
+            aria-describedby="search-hint"
+            required
+          />
+          <button id="submit-button" type="submit">Build snapshot</button>
+        </div>
+        <p id="search-hint" class="field-hint">Use a company name or its website.</p>
+      </form>
+
+      <section id="result-panel" class="result-panel" aria-live="polite" aria-atomic="true">
+        <p class="empty-state">Enter a company to surface grounded, recent signals.</p>
+      </section>
+    </main>
+  </body>
+</html>
