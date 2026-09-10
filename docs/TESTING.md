@@ -778,6 +778,23 @@ B4B is an isolated, unapproved production candidate: it does not extend B2's `ou
 
 The project owner approved **`B4B ISOLATED GROUNDED COMPANY DESCRIPTION — APPROVED`** on this basis. No B4B prompt, request shape, validation logic, retry policy, or B1–B4A behavior changed as part of this approval. Endpoint/UI integration (B5) and Phase C remain unstarted.
 
+### B5 Stage A — bounded production orchestration boundary (implemented, not live-gate approved)
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | `src/orchestration/createCompanySnapshot.mjs` composes the existing approved production exports — `discoverCompany`, `verifyCompanyDiscovery`, `requestCompanyDescription`, `assembleSnapshot` — into `createCompanySnapshot(rawInput, apiKey, options)`. It performs no retrieval, verification, selection, or synthesis itself; B1–B4B source files are unmodified. |
+| Execution order | B2 `clarification_needed` stops immediately (no B3/B4B/B4A call). Otherwise `verifyCompanyDiscovery` runs once; B3 alone owns its conditional official-domain fallback. Both `verified` and `insufficient_evidence` proceed to `requestCompanyDescription` using the confirmed `verification.company.companyName`/`officialDomain` (never raw input). `assembleSnapshot` runs only after B4B `state: "described"`; its `snapshot`/`insufficient_evidence` result is returned unchanged, with no padding. |
+| Public contract | `clarification_needed` (`invalid_input` or `company_ambiguous`, collapsing the full B1/B2 reason vocabulary), `snapshot`, `insufficient_evidence`, `unavailable` (`description_unavailable` or `provider_unavailable`). No API key, provider message, HTTP body, tag, or stack trace is exposed. |
+| Error handling | A caught `BroadDiscoveryError` (discovery or B3 fallback) or `CompanyDescriptionError` (B4B) maps to `unavailable`/`provider_unavailable`. Any other error — an unexpected programming/contract defect — is rethrown unchanged; there is no blanket `catch`. |
+| Testability | One narrow internal `services` dependency-injection object, defaulting to the real B1–B4B exports; no mocking library, framework, or B1–B4B change. A caller-supplied `now` propagates to discovery and verification. |
+| Focused tests | `node --test test/create-company-snapshot.test.mjs` — 11/11 passed: invalid-input and ambiguous clarification stopping before later stages; full verified-success ordering/exact-once counts with confirmed-identity pass-through; insufficient-evidence at 0 and 2 records still describing/assembling without padding; `description_unavailable` skipping assembly; discovery/B3/B4B provider failures each mapping to `unavailable` and stopping later stages; an unexpected `TypeError` rethrown unchanged; the real (non-faked) discovery path correctly handling zero-network invalid input. |
+| Full zero-network suite | `node --test test/*.test.mjs` — 224/224 passed (213 pre-existing + 11 new). |
+| Syntax / diff checks | `node --check` on `src/orchestration/createCompanySnapshot.mjs` and `test/create-company-snapshot.test.mjs`; `git diff --check` passed. |
+| Provider accounting | B5 Stage A Exa Search requests: 0; Exa Contents requests: 0; publisher requests: 0; other network requests: 0. Cumulative accounting remains Search 22 / Contents 2 / B4B retries 0. |
+| Protected-path audit | `git status --short` / `git diff --name-only` confirmed no file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, `src/description/`, or `src/snapshot/` was modified. |
+
+B5 Stage A is **implemented and zero-network tested but not live-gate approved** — mocked-dependency tests passing is not a live-gate pass or phase approval. No integrated live B5 request has occurred. No HTTP endpoint, frontend, or deployment exists. Phase C and deployment remain unstarted.
+
 ## Phase C
 _Not yet run._
 
