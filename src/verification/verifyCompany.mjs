@@ -97,12 +97,64 @@ function firstTagText(html, tagName) {
   return match ? textFromHtml(match[1]) : null;
 }
 
-function preferredArticleBodyHtml(html) {
-  return (
-    /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1] ??
-    /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1] ??
-    null
+/**
+ * E2R1: a plain non-greedy regex (`<tag>...</tag>`) cannot correctly locate
+ * the closing tag for the FIRST opening tag when the same tag name is
+ * nested -- e.g. an outer `<article>` wrapping inner `<article>` card/widget
+ * elements, a common pattern on publisher templates that embed related-story
+ * or data cards inside the main content column. A non-greedy match stops at
+ * the first (innermost) closing tag, silently truncating the real article
+ * body before its actual end and admitting only the leading nested widget's
+ * content. This is a generic HTML-matching correctness fix, not specific to
+ * any one publisher: it walks same-name open/close tags tracking nesting
+ * depth so the FIRST opening tag is paired with its true matching close.
+ *
+ * Adversarial review of the first version of this fix found a real overrun
+ * risk: a bare tag-marker scan has no awareness that a literal `<tagName`-
+ * shaped substring can appear inside non-structural regions -- a `<script>`
+ * hydration/JSON payload, an HTML comment -- without being a real tag. An
+ * unbalanced literal match there would make the depth counter require one
+ * extra closing tag it will never structurally see, so it walks PAST the
+ * true close into unrelated sibling content (e.g. a "related stories"
+ * sidebar), which the old non-greedy regex could never do (it could only
+ * truncate early, never overrun). The scan below skips `<script>`, `<style>`,
+ * and HTML comments entirely -- the same regions `textFromHtml` and
+ * `strippedDocumentBodyHtml` already exclude elsewhere in this file -- so
+ * their content can never be mistaken for a real nested open/close tag.
+ * A raw, unescaped `<tagName`-shaped substring inside some other tag's
+ * attribute value remains a theoretical residual gap (true HTML parsing
+ * would be needed to close it fully); that is a disclosed limitation, not
+ * something this bounded fix attempts to solve.
+ */
+function balancedTagBodyHtml(html, tagName) {
+  const openTagPattern = new RegExp(`<${tagName}\\b[^>]*>`, "i");
+  const openMatch = openTagPattern.exec(html);
+  if (!openMatch) return null;
+  const contentStart = openMatch.index + openMatch[0].length;
+  const tokenPattern = new RegExp(
+    `<script\\b[^>]*>[\\s\\S]*?<\\/script>|<style\\b[^>]*>[\\s\\S]*?<\\/style>|<!--[\\s\\S]*?-->|<${tagName}\\b[^>]*>|<\\/${tagName}\\s*>`,
+    "gi",
   );
+  tokenPattern.lastIndex = contentStart;
+  let depth = 1;
+  let match;
+  while ((match = tokenPattern.exec(html))) {
+    const token = match[0];
+    if (/^<script\b/i.test(token) || /^<style\b/i.test(token) || token.startsWith("<!--")) {
+      continue;
+    }
+    if (token.startsWith("</")) {
+      depth -= 1;
+      if (depth === 0) return html.slice(contentStart, match.index);
+    } else {
+      depth += 1;
+    }
+  }
+  return html.slice(contentStart);
+}
+
+function preferredArticleBodyHtml(html) {
+  return balancedTagBodyHtml(html, "article") ?? balancedTagBodyHtml(html, "main") ?? null;
 }
 
 function strippedDocumentBodyHtml(html) {
@@ -332,18 +384,60 @@ const QUANTITY_ANCHOR_PATTERN = /(\$)?\s?(\d[\d,]*(?:\.\d+)?)\s*(percent|%|milli
 const MINIMUM_SHARED_QUANTITY_ANCHORS = 2;
 const QUANTITY_ANCHOR_SCAN_CHAR_LIMIT = 2_000;
 
+/**
+ * E2R1: a headline and a body can state the identical event fact using a
+ * numeral ("1 billion") versus a spelled-out cardinal word ("one billion")
+ * -- e.g. one publisher's own headline quotes a milestone in numeral form
+ * while a different publisher's prose paraphrases the same quoted figure in
+ * words. Without normalizing these to the same anchor key, two records
+ * stating the identical fact never register as sharing it. Bounded to a
+ * small, fixed dictionary of common cardinal words (one-twenty) immediately
+ * followed by a scale/percent unit -- this is not general natural-language
+ * number parsing (no compounds, no "hundred"/"a quarter"/decimals-in-words),
+ * just the same normalization principle already applied to numerals,
+ * extended to the small set of word forms actually seen stating such
+ * figures. Word-form anchors are tagged `:count` only (a currency amount
+ * spelled out as "$one billion" is not a realistic publisher convention);
+ * this cannot cause a spurious match against a currency-tagged numeral
+ * anchor of the same value, so it can only ever add detection, never merge
+ * a currency figure with an unrelated count. The pattern requires the
+ * number word not be preceded by a word character or hyphen, so a genuine
+ * compound word like "twenty-one billion" is correctly excluded rather than
+ * silently misread as "one billion" (value 1) -- independent review found
+ * this exact gap in the first version and it is corrected here.
+ */
+const NUMBER_WORDS = Object.freeze({
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20,
+});
+const NUMBER_WORD_PATTERN = new RegExp(
+  `(?<![\\w-])(${Object.keys(NUMBER_WORDS).join("|")})\\s+(percent|million|billion|thousand)\\b`,
+  "gi",
+);
+
 function collectQuantityAnchors(text) {
+  const value = String(text ?? "");
   const anchors = new Set();
-  for (const match of String(text ?? "").matchAll(QUANTITY_ANCHOR_PATTERN)) {
-    const value = Number(match[2].replace(/,/g, ""));
-    if (!Number.isFinite(value)) continue;
+  for (const match of value.matchAll(QUANTITY_ANCHOR_PATTERN)) {
+    const numeric = Number(match[2].replace(/,/g, ""));
+    if (!Number.isFinite(numeric)) continue;
     const unitWord = match[3].toLowerCase();
     if (unitWord === "percent" || unitWord === "%") {
-      anchors.add(`${value}:percent`);
+      anchors.add(`${numeric}:percent`);
       continue;
     }
     const scale = match[1] ? "currency" : "count";
-    anchors.add(`${value}:${unitWord}:${scale}`);
+    anchors.add(`${numeric}:${unitWord}:${scale}`);
+  }
+  for (const match of value.matchAll(NUMBER_WORD_PATTERN)) {
+    const numeric = NUMBER_WORDS[match[1].toLowerCase()];
+    const unitWord = match[2].toLowerCase();
+    if (unitWord === "percent") {
+      anchors.add(`${numeric}:percent`);
+      continue;
+    }
+    anchors.add(`${numeric}:${unitWord}:count`);
   }
   return anchors;
 }

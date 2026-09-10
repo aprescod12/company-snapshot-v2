@@ -1153,3 +1153,54 @@ E1 (`PHASE E1` read-only audit) found no runtime blocker and recommended `NO RUN
 The Adobe submission returned `insufficient_evidence` with 2 signals (`Adobe Inc.` / `adobe.com`, correct 3-sentence description). Manual source review of both signals (authorized as read-only third-party fetches, not additional provider submissions) found they report the **same** underlying event — Adobe's Q3 FY2026 earnings release (2026-09-10) — sharing the same revenue/EPS/MAU-milestone/CEO-transition facts, directly analogous to the pre-D3 Linear defect. Running the actual `collectQuantityAnchors`/`shareStrongEventQuantityAnchors` code locally (read-only, zero-network) against the real captured HTML showed only 1 shared quantity anchor (`150:percent`) was detected, below the rule's 2-anchor minimum, so the D3 merge logic correctly did not fire under its own stated conditions — this is not a logic bug in the existing rule. The root cause traced precisely to a new, previously undocumented failure mode: one publisher's page embeds a large block of stock-price time-series JSON inside the extracted `<article>` container ahead of the real prose, consuming the 2,000-character lede-scan window before it reaches the shared revenue figure, which is also rendered in abbreviated `"$6.76B"` notation that the anchor regex (which only matches spelled-out `million|billion|thousand|percent|%`) does not match regardless of position.
 
 Per E2's explicit protocol, this was **documented, not repaired** — no runtime/production file was changed. The ~375px responsive check could not be independently performed live (no browser tool available in this session; the gap is disclosed, not assumed away). Result: **E2 BLOCKED — PROJECT-OWNER DECISION REQUIRED**. Provider accounting: pre-E2 baseline Search 55–64 / Contents 17 / retries 0; Adobe submission +1–2 Search / +1 Contents / +0 retries (a description was returned, confirming B4B was reached); new cumulative **Search 56–66 / Contents 18 / retries 0**.
+
+---
+
+# Phase E2R1 — Bounded Verified-Evidence Duplicate Repair
+
+Date: 2026-09-10. Zero-network throughout; no live provider/company request occurred. Full detail in the E2R1 orchestrator report; this section is the factual TESTING record.
+
+## Reproduction
+
+The E2 finding's original hypothesis (abbreviated notation like `$6.76B`) was investigated but proved not to be the true blocking mechanism once traced through the actual code. The real root cause, established by running the actual extraction/anchor functions (copied verbatim from `src/verification/verifyCompany.mjs`, not a hand-rewritten approximation — an initial hand-rewritten reproduction had briefly produced a wrong conclusion until this was caught) against the real captured Adobe article HTML:
+
+1. **Nested `<article>` tags break non-greedy regex matching.** One real publisher page nested an `<article>` widget (an embedded stock-card component) inside the true outer `<article>`. The old `preferredArticleBodyHtml()` regex stopped at the widget's own closing tag, truncating the extracted body before the real story prose — which independently stated the shared milestone as a spelled-out word ("one billion") where the *other* article's own headline used a numeral ("1 million"/"1 billion"). This is a generic HTML-matching bug (not Adobe-specific): any page with a nested same-named tag structure is affected.
+2. Fixing extraction alone was not sufficient — the word-form vs. numeral mismatch independently blocked headline corroboration. Both fixes were proven jointly necessary (neither alone reproduces the fix) against the real captured HTML before any test was written.
+
+## Repair
+
+Two narrow, generic, company-agnostic corrections in `src/verification/verifyCompany.mjs`:
+1. `balancedTagBodyHtml()` — a tag-depth-counting scan replacing the naive non-greedy `<article>`/`<main>` regex, correctly pairing the first opening tag with its true matching close regardless of nesting.
+2. A bounded `NUMBER_WORDS` dictionary (spelled-out cardinals "one"–"twenty") added to `collectQuantityAnchors()`, so "one billion" and "1 billion" normalize to the same anchor key. Word-form anchors are tagged `:count` only, never `:currency`.
+
+**Independent review before commit found two real safety gaps in the first version**, both corrected:
+- The tag-depth scanner had no awareness of `<script>`/`<style>`/HTML-comment regions, so a literal unbalanced `<article`-shaped substring inside an embedded JSON/hydration payload could make the scanner overrun past the true closing tag into unrelated sibling content (a risk the old regex could never produce, since it could only truncate early, never overrun). Fixed by treating `<script>...</script>`, `<style>...</style>`, and `<!-- -->` as atomic skipped tokens during the depth scan itself.
+- The word-number pattern lacked a preceding-character guard, so a compound word like "twenty-one billion" was misread as "one billion" (value 1). Fixed with a `(?<![\w-])` lookbehind.
+
+`MINIMUM_SHARED_QUANTITY_ANCHORS` (2) and the headline-corroboration requirement were **not** changed. `src/selection/selectSignals.mjs`, B1, B2, orchestration, the endpoint, and the frontend were **not** touched.
+
+## Regressions added (7 new, 368/368 total)
+
+- Unit-level: `extractArticleEvidence` reaches real prose past a nested `<article>` widget.
+- Pipeline-level red-before-green: two dissimilar-headline pages (one behind a nested widget, numeral-vs-word-form milestone) now dedupe. Confirmed genuinely red pre-fix (the widget-truncated candidate was rejected `unsupported_claim`, not merely "not deduped").
+- Anti-overdedupe (H, strengthened after review found the first version tautological — one side had zero anchors, short-circuiting the comparison before it ran): both sides now carry real, non-overlapping anchors, proving the comparison genuinely executes and correctly stays distinct.
+- Anti-overdedupe (I): a single shared word-form anchor alone does not trigger dedupe — the same 2-anchor-plus-corroboration rule governs word forms.
+- Anti-overrun (pipeline + unit-level): an unbalanced `<article`-shaped substring inside an embedded script payload does not make the scanner walk past the true close into an unrelated sibling section.
+- Compound-number guard: "twenty-one billion" is not misread as "one billion".
+
+Full suite: `node --test test/*.test.mjs` → **368/368 passed**. `node --check src/verification/verifyCompany.mjs` → clean.
+
+## Independent review
+
+Two development-time sub-agents ran: an adversarial precision reviewer (constructed and ran actual reproducing fixtures through the real pipeline; found the script/style-unaware overrun risk and the tautological test H) and an independent diff reviewer (found the compound-number gap; confirmed diff scope limited to the two intended files, no public-contract change, no dead code). Both findings were corrected before commit; the full suite was re-verified green after each correction.
+
+## Remaining limitations
+
+This repair closes the specific demonstrated failure mode (nested-tag truncation + numeral/word-form mismatch). It does **not** make same-event deduplication universal:
+- A same-event pair where neither publisher's headline states any shared figure (in any form) remains outside the rule by design (the pre-existing, disclosed precision-over-recall boundary).
+- A raw, unescaped `<tagName`-shaped substring inside another tag's *attribute value* (as opposed to inside `<script>`/`<style>`/a comment) remains a theoretical residual gap — true HTML parsing would be needed to close it fully; not pursued as disproportionate for this bounded repair.
+- Compound spelled-out numbers beyond simple cardinals ("twenty-one", "a hundred", decimals-in-words) are not parsed at all (by design, not a gap — they simply produce no anchor, which is the safe/conservative direction).
+
+## Live replay status
+
+**No live provider/company validation occurred in E2R1.** The repair is implemented and zero-network tested only. A production `Adobe` (or any other) replay requires separate, explicit project-owner authorization and has not been requested or performed. Provider accounting is unchanged from E2: **Search 56–66 / Contents 18 / retries 0**.

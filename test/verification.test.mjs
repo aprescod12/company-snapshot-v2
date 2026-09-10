@@ -1107,6 +1107,259 @@ test("D3-correction anti-overdedupe (G): a currency quantity and an unrelated op
   assert.equal(result.evidence.length, 2);
 });
 
+// --- E2R1: nested-article extraction truncation + numeral/word-form quantity normalization ---
+//
+// E2 found a live production case (a company's name-input Q3-earnings query)
+// where two publisher pages covering the identical underlying event were not
+// deduped. Investigation proved the true, generic cause is NOT abbreviated
+// notation (the original E2 hypothesis) but a nesting bug: one page nested
+// an `<article>` widget/card element (e.g. an embedded stock-ticker or
+// related-content card) inside the real outer `<article>`, and the old
+// non-greedy `<article>...</article>` regex stopped at the widget's own
+// closing tag, truncating the extracted body before the real story prose --
+// which independently also stated its shared milestone figure as a spelled
+// -out word ("one million") where the other publisher's own headline used a
+// numeral ("1 million"). Reproduced and fixed with two complementary,
+// company-agnostic corrections in `verifyCompany.mjs`: (1) nesting-aware
+// balanced-tag body extraction (`balancedTagBodyHtml`), and (2) a bounded
+// spelled-out cardinal-number (one-twenty) normalization in
+// `collectQuantityAnchors`. Neither alone reproduces the fix (verified
+// directly against the real captured production HTML before implementation,
+// not merely asserted): without the nesting fix, the real prose is never
+// reached at all; without the word-number fix, the nesting fix alone still
+// leaves the milestone figure unmatched in word form, so the pair still
+// lacks headline-corroborated overlap.
+
+function nestedWidgetArticle({
+  title,
+  jsonLdHeadline = title,
+  date = "2026-09-02",
+  widgetNoise = "Ticker snapshot widget: today's session moved between 12 and 36 points across the trading window with routine volatility noted by automated monitoring.",
+  prose,
+}) {
+  const metadata = `<script type="application/ld+json">${JSON.stringify({ "@type": "NewsArticle", headline: jsonLdHeadline, datePublished: date })}</script>`;
+  return `<!doctype html><html><head>${metadata}<title>${title}</title></head><body><article class="page"><article class="widget-card" data-card="ticker"><script type="application/json">{"points":[12,15,18,21,19,22,24,26]}</script><p>${widgetNoise}</p></article><h1>${title}</h1><p>${prose}</p></article></body></html>`;
+}
+
+test("E2R1: extractArticleEvidence reaches real prose past a nested <article> widget (unit-level, not just pipeline-level)", async () => {
+  const html = nestedWidgetArticle({
+    title: "Acme Q3 2026: platform milestone and leadership update",
+    prose: "Executives noted that Acme has reached more than one million active users across its platform, and quarterly revenue reached $500 million, growing 150 percent from continued momentum.",
+  });
+  const evidence = extractArticleEvidence(html);
+  // The old non-nesting-aware match would stop at the widget's own closing
+  // </article>, so `body` would contain only the ticker sentence and never
+  // reach the h1/real paragraph at all.
+  assert.ok(evidence.body.includes("one million active users"), `expected real prose in body, got: ${evidence.body}`);
+  assert.ok(evidence.body.includes("500 million"), `expected the revenue figure in body, got: ${evidence.body}`);
+});
+
+test("E2R1: two dissimilar-headline pages covering the same event -- one behind a nested non-editorial widget, one stating the shared milestone as a numeral in its own headline and the other as a word in its body -- are recognized as duplicate coverage", async () => {
+  const numeralHeadline = candidate({
+    rank: 1,
+    title: "Acme reports strong Q3, tops 1 million active users",
+    url: "https://acme.test/news/q3-milestone",
+    highlights: ["Acme reports strong Q3, tops 1 million active users."],
+  });
+  const nestedWidgetPage = candidate({
+    rank: 2,
+    title: "Acme Q3 2026: platform milestone and leadership update",
+    url: "https://financewire.test/acme-q3-2026",
+    highlights: ["Acme Q3 2026: platform milestone and leadership update."],
+  });
+  const observed = await verifyCompanyDiscoveryForSmoke(
+    { state: "ready_for_verification", company: { ...COMPANY, companyName: "Acme", officialDomain: "acme.test" }, prioritized: [numeralHeadline, nestedWidgetPage] },
+    "test-key",
+    {
+      now: NOW,
+      sourceFetchImpl: sourceMap({
+        [numeralHeadline.url]: article({
+          title: numeralHeadline.title,
+          date: "2026-09-01",
+          body: "Acme's third quarter results topped estimates as momentum accelerated 150 percent from a year ago. Acme reported quarterly revenue of $500 million and confirmed it has surpassed 1 million active users across its platform.",
+        }),
+        [nestedWidgetPage.url]: nestedWidgetArticle({
+          title: nestedWidgetPage.title,
+          date: "2026-09-02",
+          prose: "Executives noted that Acme has reached more than one million active users across its platform, and quarterly revenue reached $500 million, growing 150 percent from continued momentum. The leadership team expressed confidence heading into next year.",
+        }),
+      }),
+      exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+    },
+  );
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.reason), ["accepted", "duplicate"]);
+  assert.equal(observed.result.state, "insufficient_evidence");
+  assert.equal(observed.result.evidence.length, 1);
+  assert.equal(observed.result.evidence[0].sourceUrl, numeralHeadline.url);
+});
+
+test("E2R1 anti-overdedupe (H): a nested non-editorial widget's own incidental figures must not cause two different real stories to merge", async () => {
+  const launch = candidate({
+    rank: 1,
+    title: "Acme launches Atlas platform for enterprise teams",
+    url: "https://acme.test/news/atlas-launch",
+    highlights: ["Acme launches Atlas platform for enterprise teams."],
+  });
+  const hire = candidate({
+    rank: 2,
+    title: "Acme names new VP of engineering",
+    url: "https://financewire.test/acme-vp-hire",
+    highlights: ["Acme names new VP of engineering."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([launch, hire]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      // Independent adversarial review found the first version of this test
+      // weak: the launch article had zero quantity figures at all, so the
+      // comparison short-circuited on an empty anchor set before ever
+      // exercising the 2-anchor-plus-corroboration logic against reachable
+      // nested content. Both sides now carry a REAL, DIFFERENT figure so the
+      // comparison genuinely runs and must correctly find no overlap.
+      [launch.url]: article({
+        title: launch.title,
+        body: "Acme launched its new Atlas platform for enterprise teams, following 40 percent growth in platform adoption this year.",
+      }),
+      [hire.url]: nestedWidgetArticle({
+        title: hire.title,
+        // The widget's own generic "market moved 12 percent" chatter is
+        // real (post-fix, reachable) content, but it does not match the
+        // launch article's 40 percent figure at all -- zero shared anchors,
+        // well below the 2-anchor minimum, so this must stay distinct.
+        widgetNoise: "Ticker snapshot widget: broader market activity moved 12 percent across the session, unrelated to any single company's own results.",
+        prose: "Acme named a new VP of engineering to lead its platform organization, continuing a series of leadership additions this year.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("E2R1 anti-overrun: a literal unbalanced '<article'-shaped substring inside an embedded <script> payload must not make the scanner walk past the true closing tag into an unrelated sibling section", async () => {
+  // Independent adversarial review found this exact exploit: without
+  // skipping <script>/<style>/comment regions during the depth-counting
+  // scan, a literal "<article"-shaped substring inside a hydration/JSON
+  // payload (a realistic pattern on JS-hydrated publisher templates) is
+  // miscounted as a real nested open tag, so the scanner needs one MORE
+  // closing tag than actually exists and overruns past the true </article>
+  // into a sibling <aside> section -- swallowing its unrelated figures. The
+  // old non-greedy regex could only ever truncate early; it could never do
+  // this. Two DIFFERENT real stories are used: one whose page has this
+  // contaminated script sitting inside its own <article>, and a second,
+  // genuinely unrelated story that happens to restate the sibling <aside>'s
+  // two incidental figures. They must NOT merge.
+  const primary = candidate({
+    rank: 1,
+    title: "Acme launches new billing engine",
+    url: "https://acme.test/news/billing-engine",
+    highlights: ["Acme launches new billing engine."],
+  });
+  const unrelated = candidate({
+    rank: 2,
+    title: "Acme rival Globex posts strong quarter",
+    url: "https://financewire.test/globex-quarter",
+    highlights: ["Acme rival Globex posts strong quarter."],
+  });
+  const primaryHtml = `<!doctype html><html><head><script type="application/ld+json">${JSON.stringify({ "@type": "NewsArticle", headline: primary.title, datePublished: "2026-09-01" })}</script><title>${primary.title}</title></head><body><article class="story"><script type="application/json">{"preview":"content begins <article and continues from an earlier draft"}</script><h1>${primary.title}</h1><p>Acme launched a new billing engine for enterprise customers, its first major platform release this quarter.</p></article><aside id="related"><p>Unrelated: a separate analyst note pegs the sector at a $500 billion valuation, up 12 percent from last quarter.</p></aside></body></html>`;
+  const result = await verifyCompanyDiscovery(discovery([primary, unrelated]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [primary.url]: primaryHtml,
+      [unrelated.url]: article({
+        title: unrelated.title,
+        body: "Acme rival Globex posted a strong quarter, with the broader sector now valued at $500 billion, up 12 percent from last quarter according to analysts.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // If the scanner overran into <aside>, the primary article's evidence
+  // would spuriously pick up "500:billion:currency" and "12:percent" and
+  // wrongly dedupe against the unrelated Globex story. It must not.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("E2R1: extractArticleEvidence does not overrun into a sibling section when a <script> payload contains an unbalanced '<article'-shaped substring (unit-level)", () => {
+  const html = `<!doctype html><html><body><article class="story"><script type="application/json">{"preview":"content begins <article and continues from an earlier draft"}</script><h1>Acme launches new billing engine</h1><p>Acme launched a new billing engine for enterprise customers.</p></article><aside id="related"><p>Unrelated: a separate analyst note pegs the sector at a $500 billion valuation, up 12 percent from last quarter.</p></aside></body></html>`;
+  const evidence = extractArticleEvidence(html);
+  assert.ok(evidence.body.includes("billing engine"), `expected real prose in body, got: ${evidence.body}`);
+  assert.ok(!evidence.body.includes("500 billion"), `body must not include the unrelated sibling <aside> content, got: ${evidence.body}`);
+});
+
+test("E2R1: a compound spelled-out number ('twenty-one billion') is not misread as 'one billion'", async () => {
+  // collectQuantityAnchors is not exported, so this proves the practical,
+  // pipeline-level consequence directly: a genuinely different article
+  // stating an unrelated real "one billion" figure must not gain a shared
+  // anchor with a "twenty-one billion" article merely because "twenty-one"
+  // contains the substring "one".
+  const other = candidate({
+    rank: 1,
+    title: "Acme opens new lab, tops one billion in orders",
+    url: "https://acme.test/news/lab-milestone",
+    highlights: ["Acme opens new lab, tops one billion in orders."],
+  });
+  const compoundOne = candidate({
+    rank: 2,
+    title: "Acme valuation update",
+    url: "https://financewire.test/acme-valuation",
+    highlights: ["Acme valuation update."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([other, compoundOne]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [other.url]: article({
+        title: other.title,
+        body: "Acme opened a new research lab and confirmed cumulative orders have topped one billion units, a milestone for the platform.",
+      }),
+      [compoundOne.url]: article({
+        title: compoundOne.title,
+        body: "Acme's valuation reached twenty-one billion dollars this quarter, a figure investors called unprecedented for the sector.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // "twenty-one billion" must not be misread as a shared "1:billion:count"
+  // anchor against the genuinely unrelated "one billion units" story.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("E2R1 anti-overdedupe (I): a single shared word-form quantity anchor alone does not trigger dedupe (same 2-anchor-plus-corroboration rule governs word forms, not a bypass)", async () => {
+  const productA = candidate({
+    rank: 1,
+    title: "Acme ships new analytics dashboard",
+    url: "https://acme.test/news/analytics-dashboard",
+    highlights: ["Acme ships new analytics dashboard."],
+  });
+  const productB = candidate({
+    rank: 2,
+    title: "Acme opens second data center region",
+    url: "https://financewire.test/acme-data-center",
+    highlights: ["Acme opens second data center region."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([productA, productB]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [productA.url]: article({
+        title: productA.title,
+        body: "Acme shipped a new analytics dashboard used already by more than five million customers, giving teams real-time visibility into product usage.",
+      }),
+      [productB.url]: article({
+        title: productB.title,
+        body: "Acme opened a second data center region as demand grew past five million customers globally, expanding redundancy for its infrastructure.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // Both bodies restate the same "five million customers" word-form figure,
+  // but it is the ONLY shared anchor (one, not two) and neither title
+  // contains it -- so this must stay distinct exactly like the existing
+  // numeral-form single-shared-anchor case, proving the new word-number path
+  // is bound by the same threshold, not an independent, weaker rule.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
 test("B3R3: pipeline-level regression — real B3 flow accepts multiple valid first-party Notion candidates that say Notion but never Labs", async () => {
   const broad = [
     candidate({ rank: 1, title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/developer-platform", highlights: ["Introducing Notion's Developer Platform."] }),
