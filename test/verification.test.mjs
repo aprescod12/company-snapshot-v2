@@ -53,6 +53,20 @@ function rawFallbackPayload(candidates) {
   return { results: candidates };
 }
 
+function bodyFallbackPage({
+  title = "Acme launches Atlas platform",
+  visibleDate = null,
+  body = "Acme launches Atlas platform with a substantial new product capability for enterprise customers and partners. Acme says the development expands its platform and changes how customers operate.",
+  footerDate = null,
+  buriedDate = null,
+  chromeOnly = false,
+} = {}) {
+  const content = chromeOnly
+    ? ""
+    : `<section><h1>${title}</h1>${visibleDate ? `<p>${visibleDate}</p>` : ""}<p>${body}</p>${buriedDate ? `<p>${"x".repeat(1_600)} ${buriedDate}</p>` : ""}</section>`;
+  return `<!doctype html><html><head><title>${title}</title></head><body><header>Acme navigation and generic company information</header><nav>Acme products company navigation</nav><aside>Acme related resources</aside><form>Acme newsletter controls</form>${content}<footer>${footerDate ?? "Copyright 2026 Acme"}</footer></body></html>`;
+}
+
 test("source fetch accepts exact HTML and follows a bounded redirect", async () => {
   const calls = [];
   const result = await fetchHtmlSource("https://publisher.test/old", {
@@ -149,6 +163,67 @@ test("article extraction prioritizes JSON-LD then metadata then article time, ne
   assert.equal(time.publishedDate, "2026-04-01T00:00:00.000Z");
   const modifiedOnly = extractArticleEvidence(`<!doctype html><meta property="article:modified_time" content="2026-09-01"><article><h1>Acme launches Atlas platform</h1><p>Acme launches Atlas platform for enterprise customers with substantial evidence and detail.</p><p>Additional support for this source page.</p></article>`);
   assert.equal(modifiedOnly.publishedDate, null);
+});
+
+test("body fallback accepts a substantive NVIDIA-Newsroom-style release without an article or main", async () => {
+  const nvidia = { ...COMPANY, companyName: "NVIDIA Corporation", officialDomain: "nvidia.com" };
+  const mediaTek = candidate({
+    title: "NVIDIA and MediaTek Deepen Long-Standing Partnership",
+    url: "https://nvidianews.nvidia.com/news/nvidia-mediatek-partnership",
+    highlights: ["NVIDIA and MediaTek Deepen Long-Standing Partnership."],
+  });
+  const html = bodyFallbackPage({
+    title: mediaTek.title,
+    visibleDate: "August 31, 2026",
+    body: "NVIDIA and MediaTek deepen their long-standing partnership to develop advanced infrastructure and computing platforms for enterprise customers. The expanded collaboration combines NVIDIA accelerated computing with MediaTek technology for substantial new products and services across global markets.",
+  });
+  const extracted = extractArticleEvidence(html);
+  assert.equal(extracted.publishedDate, "2026-08-31T00:00:00.000Z");
+  assert.match(extracted.body, /NVIDIA and MediaTek deepen/);
+  const result = await verifyCandidate(mediaTek, nvidia, { now: NOW, fetchImpl: async () => response(html) });
+  assert.equal(result.accepted, true);
+  assert.equal(result.evidence.recencyBucket, "RECENT");
+  assert.equal(result.evidence.sourceClass, "FIRST_PARTY");
+});
+
+test("existing article and main content keep priority and higher-priority dates outrank visible dates", async () => {
+  const articleHtml = article({ date: "2026-08-20" }).replace("<h1>Acme launches Atlas platform</h1>", "<h1>Acme launches Atlas platform</h1><p>August 31, 2026</p>");
+  assert.equal(extractArticleEvidence(articleHtml).publishedDate, "2026-08-20T00:00:00.000Z");
+  const metadata = extractArticleEvidence(bodyFallbackPage({ visibleDate: "August 31, 2026" }).replace("</head>", '<meta property="article:published_time" content="2026-08-10T08:00:00Z"></head>'));
+  assert.equal(metadata.publishedDate, "2026-08-10T08:00:00.000Z");
+  const main = `<!doctype html><main><h1>Acme opens Harbor expansion</h1><time datetime="2026-04-01">April 1</time><p>August 31, 2026</p><p>Acme opens Harbor expansion to add substantial regional capacity and a new platform capability for enterprise customers and partners.</p><p>Acme says the material development expands operations for customers.</p></main>`;
+  assert.equal(extractArticleEvidence(main).publishedDate, "2026-04-01T00:00:00.000Z");
+  const result = await verifyCandidate(candidate({ title: "Acme opens Harbor expansion", url: "https://acme.test/news/harbor", highlights: ["Acme opens Harbor expansion."] }), COMPANY, {
+    now: NOW,
+    fetchImpl: async () => response(main),
+  });
+  assert.equal(result.accepted, true);
+});
+
+test("visible-date fallback is bounded to near-headline publisher content and keeps safety gates", async () => {
+  const footerOnly = bodyFallbackPage({ footerDate: "August 31, 2026" });
+  const buriedOnly = bodyFallbackPage({ buriedDate: "August 31, 2026" });
+  assert.equal(extractArticleEvidence(footerOnly).publishedDate, null);
+  assert.equal(extractArticleEvidence(buriedOnly).publishedDate, null);
+  assert.equal(extractArticleEvidence(bodyFallbackPage({ visibleDate: "September 31, 2026" })).publishedDate, null);
+  assert.equal(extractArticleEvidence(bodyFallbackPage({ title: "Acme August 31, 2026 platform update" })).publishedDate, null);
+  const invisibleDates = bodyFallbackPage().replace(
+    "</h1>",
+    '</h1><template><p>August 31, 2026</p></template><p hidden>August 31, 2026</p><p aria-hidden="true">August 31, 2026</p>',
+  );
+  assert.equal(extractArticleEvidence(invisibleDates).publishedDate, null);
+  const footerResult = await verifyCandidate(candidate({ url: "https://acme.test/news/footer" }), COMPANY, { now: NOW, fetchImpl: async () => response(footerOnly) });
+  assert.equal(footerResult.reason, "date_unknown");
+  const homepage = await verifyCandidate(candidate({ url: "https://acme.test/" }), COMPANY, { now: NOW, fetchImpl: async () => response(bodyFallbackPage({ visibleDate: "August 31, 2026" })) });
+  assert.equal(homepage.reason, "unsupported_claim");
+  const chromeOnly = await verifyCandidate(candidate({ url: "https://acme.test/news/chrome" }), COMPANY, { now: NOW, fetchImpl: async () => response(bodyFallbackPage({ chromeOnly: true })) });
+  assert.equal(chromeOnly.reason, "unsupported_claim");
+  const stale = await verifyCandidate(candidate({ url: "https://acme.test/news/stale" }), COMPANY, { now: NOW, fetchImpl: async () => response(bodyFallbackPage({ visibleDate: "January 1, 2026" })) });
+  assert.equal(stale.reason, "stale");
+  const future = await verifyCandidate(candidate({ url: "https://acme.test/news/future" }), COMPANY, { now: NOW, fetchImpl: async () => response(bodyFallbackPage({ visibleDate: "January 1, 2027" })) });
+  assert.equal(future.reason, "date_unknown");
+  const unrelated = await verifyCandidate(candidate({ title: "Acme launches Atlas platform", url: "https://acme.test/news/unrelated" }), COMPANY, { now: NOW, fetchImpl: async () => response(bodyFallbackPage({ title: "Other launches Atlas platform", visibleDate: "August 31, 2026", body: "Other launches Atlas platform with a substantial new product capability for enterprise customers and partners. Other says the material development expands its operations for customers." })) });
+  assert.equal(unrelated.reason, "unsupported_claim");
 });
 
 test("verification requires source date and support, not provider date/highlight alone", async () => {

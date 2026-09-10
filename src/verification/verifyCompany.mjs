@@ -13,6 +13,14 @@ const TRIVIAL_MARKERS = [
   "stock price", "share price", "market commentary", "generic profile", "routine update",
   "minor update", "small update", "routine maintenance", "minor maintenance",
 ];
+const MIN_SUBSTANTIVE_BODY_LENGTH = 120;
+const VISIBLE_DATE_REGION_HTML_LENGTH = 1_400;
+const MONTHS = new Map([
+  ["january", 1], ["jan", 1], ["february", 2], ["feb", 2], ["march", 3], ["mar", 3],
+  ["april", 4], ["apr", 4], ["may", 5], ["june", 6], ["jun", 6], ["july", 7], ["jul", 7],
+  ["august", 8], ["aug", 8], ["september", 9], ["sep", 9], ["sept", 9], ["october", 10], ["oct", 10],
+  ["november", 11], ["nov", 11], ["december", 12], ["dec", 12],
+]);
 
 export const VERIFICATION_REASON = Object.freeze({
   ACCEPTED: "accepted",
@@ -89,12 +97,27 @@ function firstTagText(html, tagName) {
   return match ? textFromHtml(match[1]) : null;
 }
 
-function articleBodyHtml(html) {
+function preferredArticleBodyHtml(html) {
   return (
     /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1] ??
     /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1] ??
     null
   );
+}
+
+function strippedDocumentBodyHtml(html) {
+  const bodyHtml = /<body\b[^>]*>([\s\S]*?)<\/body>/i.exec(html)?.[1];
+  if (!bodyHtml) return null;
+  return bodyHtml.replace(
+    /<(?:script|style|noscript|nav|header|footer|aside|form|button|input|select|textarea)\b[^>]*>[\s\S]*?<\/(?:script|style|noscript|nav|header|footer|aside|form|button|input|select|textarea)>/gi,
+    " ",
+  );
+}
+
+function contentBodyHtml(html) {
+  const preferred = preferredArticleBodyHtml(html);
+  if (preferred && textFromHtml(preferred).length >= MIN_SUBSTANTIVE_BODY_LENGTH) return preferred;
+  return strippedDocumentBodyHtml(html);
 }
 
 function collectJsonLd(value, output) {
@@ -142,21 +165,42 @@ function normalizeDate(value) {
   return date.toISOString();
 }
 
+function visibleNearHeadlineDate(contentHtml) {
+  const headline = /<h1\b[^>]*>[\s\S]*?<\/h1>/i.exec(contentHtml ?? "");
+  if (!headline) return null;
+  const topHtml = contentHtml.slice(
+    headline.index + headline[0].length,
+    headline.index + headline[0].length + VISIBLE_DATE_REGION_HTML_LENGTH,
+  ).replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, " ").replace(
+    /<([A-Za-z][\w:-]*)\b(?=[^>]*(?:\shidden(?:\s|=|>)|\saria-hidden\s*=\s*(?:"true"|'true'|true)(?:\s|>)))[^>]*>[\s\S]*?<\/\1>/gi,
+    " ",
+  );
+  const topText = textFromHtml(
+    topHtml,
+  );
+  const match = /\b([A-Za-z]+)\.?\s+(\d{1,2}),\s+(\d{4})\b/.exec(topText);
+  if (!match) return null;
+  const month = MONTHS.get(match[1].toLowerCase());
+  if (!month) return null;
+  return normalizeDate(`${match[3]}-${String(month).padStart(2, "0")}-${match[2].padStart(2, "0")}`);
+}
+
 export function extractArticleEvidence(html) {
   const article = articleJsonLd(html);
   const title = normalizeSpace(
     article?.headline ?? firstTagText(html, "h1") ?? metaContent(html, "property", "og:title") ?? firstTagText(html, "title"),
   );
-  const bodyHtml = articleBodyHtml(html);
+  const bodyHtml = contentBodyHtml(html);
   const body = bodyHtml ? textFromHtml(bodyHtml) : "";
   const jsonLdDate = normalizeDate(article?.datePublished);
   const metaDate = normalizeDate(metaContent(html, "property", "article:published_time"));
   const timeMatch = /<time\b([^>]*)>/i.exec(bodyHtml ?? "");
   const timeDate = timeMatch ? normalizeDate(attributes(timeMatch[1]).datetime) : null;
+  const visibleDate = visibleNearHeadlineDate(bodyHtml);
   return {
     sourceTitle: title || null,
     body,
-    publishedDate: jsonLdDate ?? metaDate ?? timeDate,
+    publishedDate: jsonLdDate ?? metaDate ?? timeDate ?? visibleDate,
     hasArticleContainer: Boolean(bodyHtml),
   };
 }
@@ -235,7 +279,7 @@ export async function verifyCandidate(candidate, company, options = {}) {
     new URL(fetched.resolvedUrl).pathname === "/" ||
     !article.hasArticleContainer ||
     !article.sourceTitle ||
-    article.body.length < 120
+    article.body.length < MIN_SUBSTANTIVE_BODY_LENGTH
   ) {
     return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM }, diagnostic, options);
   }

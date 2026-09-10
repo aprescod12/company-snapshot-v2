@@ -54,3 +54,20 @@ The preflight block is superseded for live-gate evaluation by this owner-run con
 The owner-run outcomes earned observability, not a change to B1/B2/B3 policy. The current smoke harness makes the same one B2 and one B3 execution, now through B2's existing sanitized `discoverCompanyForSmoke(...)` observer and a shared B3 verification observer. It exposes safe B2 identity diagnostics on both resolution and clarification, and for each B3 candidate actually evaluated it records the real post-dedupe decision, broad/fallback origin, safe parsed-source metadata where available, fallback counts, and final accepted count. It adds no retry, persistence, raw provider/publisher artifact, third search, or second verifier; normal production return contracts and decisions remain unchanged.
 
 Syntax checks, focused B3/B3-smoke diagnostics (27/27), the full zero-network suite (158/158), and `git diff --check` passed. Stage A made 0 Exa requests and 0 publisher requests, so cumulative Exa remains 18. B3R1 live replay is separately limited to the two already-authorized production-path commands when the executing process has the key; B3 remains not production-approved.
+
+## B3R1 Stage B — owner-run replay
+
+The owner subsequently ran the authorized B3R1 production paths with 0 retries. NVIDIA resolved to `NVIDIA Corporation` / `nvidia.com`, used broad plus the single fallback (2 Exa requests), and remained `insufficient_evidence` with two accepted first-party recent records. The trace identified the limiting defect: several legitimate `nvidianews.nvidia.com` pages had valid resolved URLs and titles but no publisher date or source class because they failed the static `<article>`/`<main>` structural gate before support, materiality, recency, anchoring, or dedupe. Stripe resolved as `Stripe` / `stripe.com` / `ambiguous:false`, used one broad request without fallback, and was `verified` with three distinct first-party recent publisher-derived records: Meta Muse / Link (2026-09-08), Singapore infrastructure expansion (2026-08-25), and FX/currency capabilities (2026-08-17).
+
+| Accounting | Count |
+| --- | ---: |
+| Starting cumulative Exa requests | 18 |
+| NVIDIA broad / fallback | 1 / 1 |
+| Stripe broad / fallback | 1 / 0 |
+| B3R1 Stage B Exa requests | 3 |
+| Retries | 0 |
+| Ending cumulative Exa requests | 21 |
+
+## B3R2 correction scope
+
+B3R2 addresses only the observed static publisher incompatibility. It preserves preferred `<article>` then `<main>` extraction and adds a generic chrome-stripped `<body>` fallback only when neither is substantive. It adds a final source-derived date fallback only for a strict calendar-valid English month-name date immediately after the content headline, after the existing JSON-LD, metadata, and `<time datetime>` mechanisms. Dates in the headline itself, footer, buried text, templates, or hidden/`aria-hidden` content are not visible-date proof. Provider dates remain ineligible. Synthetic fixtures cover the NVIDIA-Newsroom structural shape and these false-positive guardrails. Syntax checks, focused B3/B3-smoke tests (30/30), the full zero-network suite (161/161), and `git diff --check` passed; B3R2 made 0 Exa and 0 publisher requests. No identity, discovery, selector, recency, materiality, dedupe, fallback, retry, dependency, or publisher-specific change is made. B3 is still not production-approved; one NVIDIA replay is separately authorized.

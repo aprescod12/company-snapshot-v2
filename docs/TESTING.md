@@ -690,6 +690,27 @@ No raw provider response, authorization header, source body, candidate output be
 
 No B3R1 live replay or production-policy correction has occurred in Stage A. B3 remains not production-approved pending root-cause review and project-owner decision.
 
+### B3R1 Stage B — owner-run replay
+
+| Measure | Observed result |
+| --- | --- |
+| NVIDIA | B2 `ready_for_verification` as `NVIDIA Corporation` / `nvidia.com`; broad Exa 1; fallback Exa 1; B3 `insufficient_evidence`; 2 accepted first-party recent records. Several legitimate `nvidianews.nvidia.com` pages reached a valid URL/title but failed the `<article>`/`<main>` structural gate as `unsupported_claim` before source classification or publisher-date extraction. |
+| Stripe control | B2 `ready_for_verification` as `Stripe` / `stripe.com` / `ambiguous:false`; broad Exa 1; fallback 0; B3 `verified` with 3 distinct first-party recent publisher-derived records: Meta Muse / Link (2026-09-08), Singapore infrastructure expansion (2026-08-25), and FX/currency capabilities (2026-08-17). |
+| Provider accounting | Starting cumulative Exa 18; NVIDIA broad 1; NVIDIA fallback 1; Stripe broad 1; B3R1 Stage B Exa 3; retries 0; ending cumulative Exa 21. |
+| Decision | Stripe is a control that the existing pipeline can succeed. NVIDIA's observed failure is a static publisher-content compatibility boundary, not evidence for changing identity, discovery, recency, materiality, dedupe, or fallback policy. |
+
+### B3R2 — narrow publisher extraction/date-proof correction
+
+| Measure | Observed result |
+| --- | --- |
+| Bounded correction | Keep `<article>` then `<main>` preferred; only otherwise use a small chrome-stripped `<body>` fallback. Existing non-root, title, substantive body, company support, triviality, recency, anchoring, and dedupe gates remain in force. |
+| Date proof | JSON-LD `datePublished` → `article:published_time` → `<time datetime>` → one strict calendar-valid English month-name date in a bounded region after the content `<h1>` → unknown. Dates in the headline itself, footer, buried text, templates, or hidden/`aria-hidden` content cannot qualify. Provider dates remain discovery metadata, never publisher proof. |
+| Regression fixtures | Synthetic NVIDIA-Newsroom-style no-`article`/no-`main` content accepts as first-party recent evidence; existing article/main and Stripe-style paths continue to pass. Homepage, thin chrome-only body, unrelated company, stale/future, invalid, footer, buried, headline, and inert-date cases fail closed. |
+| Verification | Syntax checks; `node --test test/verification.test.mjs test/phase-b3-live-smoke.test.mjs` — 30/30 passed; `node --test test/*.test.mjs` — 161/161 passed; `git diff --check` passed. |
+| Provider accounting | Starting cumulative Exa 21; B3R2 implementation Exa 0; publisher GETs 0; retries 0; ending cumulative Exa 21. |
+
+The correction adds no dependency, publisher-specific adapter, retry, third search, or provider activity. B3R2 remains pending one authorized NVIDIA replay.
+
 ## Phase C
 _Not yet run._
 
