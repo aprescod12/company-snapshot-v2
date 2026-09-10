@@ -71,3 +71,29 @@ The owner subsequently ran the authorized B3R1 production paths with 0 retries. 
 ## B3R2 correction scope
 
 B3R2 addresses only the observed static publisher incompatibility. It preserves preferred `<article>` then `<main>` extraction and adds a generic chrome-stripped `<body>` fallback only when neither is substantive. It adds a final source-derived date fallback only for a strict calendar-valid English month-name date immediately after the content headline, after the existing JSON-LD, metadata, and `<time datetime>` mechanisms. Dates in the headline itself, footer, buried text, templates, or hidden/`aria-hidden` content are not visible-date proof. Provider dates remain ineligible. Synthetic fixtures cover the NVIDIA-Newsroom structural shape and these false-positive guardrails. Syntax checks, focused B3/B3-smoke tests (30/30), the full zero-network suite (161/161), and `git diff --check` passed; B3R2 made 0 Exa and 0 publisher requests. No identity, discovery, selector, recency, materiality, dedupe, fallback, retry, dependency, or publisher-specific change is made. B3 is still not production-approved; one NVIDIA replay is separately authorized.
+
+## B3R2 — owner-run NVIDIA replay
+
+The owner ran the one authorized B3R2 NVIDIA production-path replay, with no retry. NVIDIA made one broad Exa request only, with no fallback request, and reached B3 `verified` with exactly three accepted evidence records.
+
+| Accounting | Count |
+| --- | ---: |
+| Starting cumulative Exa requests | 21 |
+| NVIDIA broad / fallback | 1 / 0 |
+| B3R2 replay Exa requests | 1 |
+| Retries | 0 |
+| Ending cumulative Exa requests | 22 |
+
+This is the first NVIDIA production-path run to reach `verified`; the earlier owner-run continuation and B3R1 Stage B NVIDIA runs both ended `insufficient_evidence` on the pre-correction extraction path. B3 remains not production-approved pending project-owner review.
+
+## B3R2 — publisher-only MediaTek validation
+
+A subsequent publisher-only validation made 0 Exa requests. The exact `nvidianews.nvidia.com` page that previously failed the structural gate in B3R1 Stage B (rejected as `unsupported_claim` before source classification or publisher-date extraction) was accepted through B3R2's corrected extraction path, with a publisher-derived date of `2026-08-31`, classified `RECENT` and `FIRST_PARTY`.
+
+| Accounting | Count |
+| --- | ---: |
+| Starting cumulative Exa requests | 22 |
+| MediaTek validation Exa requests | 0 |
+| Ending cumulative Exa requests | 22 |
+
+This directly validates B3R2's intended structural/date-extraction correction: the same static-content NVIDIA Newsroom page shape that was previously rejected at the `<article>`/`<main>` structural gate is now accepted through the chrome-stripped `<body>` fallback with strict date proof, rather than being rejected before source classification or date extraction. It adds no discovery, Exa, or production-policy activity beyond the B3R2 implementation itself.

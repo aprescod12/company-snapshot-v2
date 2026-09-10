@@ -17,6 +17,10 @@ The product requirements are controlled by `docs/ASSESSMENT_BRIEF.md`. This docu
 
 If two sources conflict, stop and surface the conflict rather than silently choosing one.
 
+## AI tooling roster
+
+As of 2026-09-09, ChatGPT continues to handle planning, technical critique, phase/scope decisions, review, and prompt construction. Claude Code has joined the previously used coding agents (including Codex) as an implementation/review coding agent for repository work. This entry records current tooling only; it does not reinterpret or reassign which agent performed any historical phase recorded elsewhere in this repository.
+
 ---
 
 # 1. Core principle

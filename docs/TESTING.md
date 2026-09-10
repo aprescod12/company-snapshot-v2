@@ -711,6 +711,27 @@ No B3R1 live replay or production-policy correction has occurred in Stage A. B3 
 
 The correction adds no dependency, publisher-specific adapter, retry, third search, or provider activity. B3R2 remains pending one authorized NVIDIA replay.
 
+### B3R2 — owner-run NVIDIA replay
+
+| Measure | Observed result |
+| --- | --- |
+| Run | The owner ran the one authorized B3R2 NVIDIA production-path replay; no retry. |
+| Exa requests | One broad Exa request only; no fallback request. |
+| B3 result | `verified`, with exactly three accepted evidence records. |
+| Provider accounting | Starting cumulative Exa 21; B3R2 replay Exa 1; retries 0; ending cumulative Exa 22. |
+
+This is the first NVIDIA production-path run to reach `verified`; the earlier owner-run continuation and B3R1 Stage B NVIDIA runs both ended `insufficient_evidence` on the pre-correction extraction path. B3 remains not production-approved pending project-owner review; B4 and later work remain unstarted.
+
+### B3R2 — publisher-only MediaTek validation
+
+| Measure | Observed result |
+| --- | --- |
+| Run | A subsequent publisher-only validation; 0 Exa requests. |
+| Result | The exact `nvidianews.nvidia.com` page that previously failed the structural gate in B3R1 Stage B (rejected as `unsupported_claim` before source classification or publisher-date extraction) was accepted, with a publisher-derived date of `2026-08-31`, classified `RECENT` and `FIRST_PARTY`. |
+| Provider accounting | Starting cumulative Exa 22; validation Exa 0; ending cumulative Exa 22. |
+
+This directly validates B3R2's intended structural/date-extraction correction: the same static-content NVIDIA Newsroom page shape previously rejected at the `<article>`/`<main>` structural gate is now accepted through the chrome-stripped `<body>` fallback with strict date proof. It adds no discovery, Exa, or production-policy activity beyond the B3R2 implementation itself. B3 remains not production-approved; B4 and later work remain unstarted.
+
 ## Phase C
 _Not yet run._
 
