@@ -54,7 +54,7 @@ input (name or domain)
 
 ## Local setup
 
-There is nothing to install — the whole project runs on Node.js's built-ins.
+There are no project dependencies to install — the whole project runs on Node.js's built-ins.
 
 ```bash
 # set your Exa key (server-side only)
@@ -67,17 +67,17 @@ node --test test/*.test.mjs
 node scripts/c3-local-ui-harness.mjs   # serves http://127.0.0.1:8787
 ```
 
-To run the actual app locally against live Exa, use the Vercel CLI (`vercel dev`) from the repo root with `EXA_API_KEY` set in your environment — this repo is a native Vercel project (static `public/` + one Function), so no separate server code is needed.
+To run the actual app locally against live Exa, install the [Vercel CLI](https://vercel.com/cli) separately and run `vercel dev` from the repo root with `EXA_API_KEY` set in your environment — this repo is a native Vercel project (static `public/` + one Function), so no separate server code is needed. This has not been independently re-verified in this environment; it follows Vercel's standard convention for a project shaped like this one.
 
 Never commit a `.env` file or expose `EXA_API_KEY` to browser code; `.gitignore` already excludes `.env*`.
 
 ## Testing & validation
 
 - **372/372 zero-network tests pass** (`node --test test/*.test.mjs`) — covering targeting, discovery, verification, deduplication, description generation, snapshot assembly, the HTTP endpoint, and the frontend controller.
-- **Real production validation**, not just fixtures: a bounded live cohort (Stripe, PostHog, Canva, notion.so, Mercury, Craigslist, Datadog, Anthropic, Microsoft, Adobe, and others) was submitted to the deployed app, with every resulting signal's source URL manually opened and checked for identity, material support, and date accuracy.
+- **Real production validation**, not just fixtures: production testing produced successful snapshots for `notion.so`, PostHog, and Mercury; all 9 displayed signal-source URLs across those three snapshots were manually opened and checked for company identity, material support, and date consistency. Later production testing covered additional names/domains (including Canva, Craigslist, Datadog, Anthropic, Microsoft, and Adobe) and surfaced the documented reliability and deduplication limitations below, not all of which had every source manually re-verified.
 - **Duplicate-event regressions**: a real production case (two publisher pages covering the same underlying company event) was reproduced with a zero-network fixture and fixed with a narrow, generic evidence-dedupe rule, backed by anti-overdedupe tests to guard against over-merging unrelated stories.
 - **Safe-failure states are exercised directly**: ambiguous names, malformed input, sparse-evidence companies, and provider/description failures all resolve to their documented public states, never a fabricated result.
-- **Frontend behavior** — loading state, source-link rendering, duplicate-submit prevention, and responsive layout — was validated via one live browser confirmation and static code review.
+- **Frontend behavior**: the loading state and a full rendered snapshot (source-link rendering included) received one live-browser confirmation. Duplicate-submit prevention and responsive layout are covered by automated tests and static CSS/code inspection, not a live browser check; a manual ~375px mobile-viewport confirmation remains outstanding (see below).
 
 Full detail, every recorded run, and exact regression names: [`docs/TESTING.md`](docs/TESTING.md).
 
@@ -86,7 +86,7 @@ Full detail, every recorded run, and exact regression names: [`docs/TESTING.md`]
 - **Conservative company resolution.** A small number of clear, well-known companies (e.g. a large public company by name alone) can return a clarification request instead of a snapshot — the app refuses to guess rather than risk resolving to the wrong entity.
 - **Provider/source variability.** A handful of companies (e.g. companies with sparse first-party web presence) have shown inconsistent identity-grounding behavior across separate live calls — not a wrong result, just variability in what the search provider returns.
 - **Some companies will honestly return limited evidence** when fewer than three verifiable, distinct signals exist for them right now.
-- **Same-event deduplication favors precision over recall.** It reliably catches duplicate coverage when at least one shared, specific fact appears in either publisher's own headline, but a same-event pair where neither headline states a shared figure — or where extraction is defeated by an unusual publisher page structure — can still occasionally survive as two signals. One such case was found and partially, not fully, closed in production; it is accepted as a known residual limitation rather than grounds for further retrieval-architecture changes.
+- **Same-event deduplication favors precision over recall.** It merges two verified pages only when they share at least two specific quantitative facts (e.g. matching dollar figures or percentages) AND at least one of those shared facts is corroborated by appearing in either publisher's own headline — a deliberately conservative bar. A same-event pair that doesn't meet it, or where page-structure quirks defeat extraction, can still occasionally survive as two signals. One such case was found and only partially closed in production; it is accepted as a known residual limitation rather than grounds for further retrieval-architecture changes.
 - **No universal success guarantee.** This is a small, deterministic pipeline, not a general-purpose research agent — it is designed to fail honestly, not to succeed on every possible input.
 
 ## AI-assisted development
@@ -111,4 +111,4 @@ This project was built with an AI coding agent as the primary implementer, under
 
 ## Submission status / deployment
 
-The app is live and functioning at the URL above, running the current `main` branch. The zero-network test suite is green, and the production deployment has been validated against a real, multi-company cohort with manually re-verified sources. A manual mobile-viewport (~375px) visual check by the project owner is still outstanding, and the submission package's chat transcript and half-page written reflection are prepared separately from this repository.
+The app is live and functioning at the URL above, running the current `main` branch. The zero-network test suite is green, and the production deployment has produced successful, source-verified snapshots for a real cohort of companies (see Testing & validation above for exactly which). A manual mobile-viewport (~375px) visual check by the project owner is still outstanding, and the submission package's chat transcript and half-page written reflection remain to be prepared separately from this repository — they are not yet complete.
