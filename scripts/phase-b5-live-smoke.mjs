@@ -100,6 +100,7 @@ function deriveObserved(captured, counters) {
     description: captured.description
       ? {
           state: captured.description.state,
+          reason: captured.description.reason,
           sourceUrl: captured.description.sourceUrl,
           providerLatencyMs: captured.description.provider?.latencyMs,
           estimatedCostUsd: captured.description.provider?.estimatedCostUsd,

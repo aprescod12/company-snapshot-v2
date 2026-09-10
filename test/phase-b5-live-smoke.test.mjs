@@ -314,3 +314,63 @@ test("13: buildFailureDiagnostic reports an unreached stage honestly with zero c
   assert.equal(diagnostic.providerUse.exaContentsRequests, 0);
   assert.equal(diagnostic.totalLatencyMs, 42);
 });
+
+test("14: summarizeB5LiveSmoke retains the exact B4B rejection reason for description_unavailable", () => {
+  const captured = {
+    discovery: null,
+    verification: null,
+    description: { state: "description_unavailable", reason: "invalid_sentence_count" },
+  };
+  const counters = { broadExaSearchRequests: 1, fallbackExaSearchRequests: 0, publisherRequests: 3, exaContentsRequests: 1 };
+  const final = { state: "unavailable", reason: "description_unavailable" };
+
+  const summary = summarizeB5LiveSmoke("NVIDIA", captured, counters, final, 500);
+
+  assert.equal(summary.description.state, "description_unavailable");
+  assert.equal(summary.description.reason, "invalid_sentence_count");
+});
+
+test("15: buildFailureDiagnostic retains the exact captured description reason after a B4B rejection", () => {
+  const captured = {
+    discovery: null,
+    verification: null,
+    description: { state: "description_unavailable", reason: "untrusted_source_domain" },
+  };
+  const counters = { broadExaSearchRequests: 1, fallbackExaSearchRequests: 0, publisherRequests: 3, exaContentsRequests: 1 };
+
+  const diagnostic = buildFailureDiagnostic("NVIDIA", "budget-check", captured, counters, 500, new Error("boom"));
+
+  assert.equal(diagnostic.description.state, "description_unavailable");
+  assert.equal(diagnostic.description.reason, "untrusted_source_domain");
+});
+
+test("16: a successful described summary exposes no reason key, only an absent/undefined representation", () => {
+  const captured = {
+    discovery: null,
+    verification: null,
+    description: {
+      state: "described",
+      description: "Acme builds enterprise software for supply-chain teams. Retailers use its platform to coordinate suppliers.",
+      sourceUrl: "https://acme.test/",
+      provider: { latencyMs: 100, estimatedCostUsd: 0.001 },
+    },
+  };
+  const counters = { broadExaSearchRequests: 1, fallbackExaSearchRequests: 0, publisherRequests: 3, exaContentsRequests: 1 };
+  const final = { state: "snapshot", company: {}, signals: [] };
+
+  const summary = summarizeB5LiveSmoke("NVIDIA", captured, counters, final, 500);
+  assert.equal(summary.description.reason, undefined);
+
+  const parsed = JSON.parse(formatSmokeOutput(summary));
+  assert.equal(Object.hasOwn(parsed.description, "reason"), false);
+});
+
+test("17: redaction still strips the API key when a description rejection reason is present", () => {
+  const summary = {
+    submittedInput: "NVIDIA",
+    description: { state: "description_unavailable", reason: "empty_summary" },
+  };
+  const output = formatSmokeOutput(summary, "super-secret-test-key");
+  assert.equal(output.includes("super-secret-test-key"), false);
+  assert.equal(output.includes("empty_summary"), true);
+});
