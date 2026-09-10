@@ -186,6 +186,33 @@ test("domain input remains anchored and contradictory retargeting stops safely",
   assert.equal(retarget.state, "clarification_needed");
 });
 
+test("B1R1: a strongly grounded cross-TLD domain proposal reaches ready_for_verification with the reconciled canonical domain", async () => {
+  const calls = { count: 0 };
+  const result = await discoverCompany("notion.so", "test-key", {
+    now: NOW,
+    fetchImpl: fetchPayload(payload({
+      identity: { resolvedCompanyName: "Notion", officialDomain: "notion.com", ambiguous: false },
+      evidenceDomain: "notion.com",
+    }), calls),
+  });
+  assert.equal(calls.count, 1);
+  assert.equal(result.state, "ready_for_verification");
+  assert.deepEqual(result.company, { inputKind: "domain", companyName: "Notion", officialDomain: "notion.com" });
+});
+
+test("B1R1: an unrelated proposed domain for a domain-input target still stops safely", async () => {
+  const calls = { count: 0 };
+  const result = await discoverCompany("notion.so", "test-key", {
+    now: NOW,
+    fetchImpl: fetchPayload(payload({
+      identity: { resolvedCompanyName: "Other Company", officialDomain: "other.test", ambiguous: false },
+      evidenceDomain: "other.test",
+    }), calls),
+  });
+  assert.equal(calls.count, 1);
+  assert.deepEqual(result, { state: "clarification_needed", reason: "contradictory_identity" });
+});
+
 test("invalid user input stops before provider access and production code has no script dependency", async () => {
   let calls = 0;
   const result = await discoverCompany("https://localhost", "test-key", {

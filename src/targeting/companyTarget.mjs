@@ -118,6 +118,25 @@ function isSameDomainOrSubdomain(hostname, officialDomain) {
   return hostname === officialDomain || hostname.endsWith(`.${officialDomain}`);
 }
 
+function isExactlyTwoLabelHostname(hostname) {
+  return typeof hostname === "string" && hostname.length > 0 && hostname.split(".").length === 2;
+}
+
+function leftmostLabel(hostname) {
+  return hostname.split(".")[0];
+}
+
+function everyUrlIsExclusivelyOnDomain(urls, domain) {
+  return (
+    Array.isArray(urls) &&
+    urls.length > 0 &&
+    urls.every((value) => {
+      const parsed = parseHttpUrl(value);
+      return parsed !== null && isSameDomainOrSubdomain(normalizeHostname(parsed.hostname), domain);
+    })
+  );
+}
+
 function normalizeEvidenceDomain(value) {
   if (typeof value !== "string" || value.trim() !== value || value.length === 0) return null;
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) return null;
@@ -152,6 +171,40 @@ function fieldSpecificGroundingCorroboratesDomain(groundingByField, officialDoma
     evidenceCorroboratesDomain(groundingByField.resolvedCompanyName, officialDomain) &&
     evidenceCorroboratesDomain(groundingByField.officialDomain, officialDomain)
   );
+}
+
+/**
+ * B1R1 conservative cross-TLD canonical-domain reconciliation. A submitted
+ * domain target and a different provider-proposed domain may be reconciled
+ * only when every generic condition below holds; this contains no company-
+ * or domain-specific branch and is not a domain-alias table. Returns the
+ * proposed domain when reconciliation succeeds, or null when it does not
+ * (in which case the existing contradictory_identity outcome applies).
+ */
+function reconcileCrossTldDomain(target, evidence, proposedDomain, resolvedCompanyName) {
+  if (evidence.ambiguous !== false) return null; // (A) explicitly unambiguous only
+  if (!isExactlyTwoLabelHostname(target.officialDomain) || !isExactlyTwoLabelHostname(proposedDomain)) {
+    return null; // (B) both hostnames must be simple two-label domains
+  }
+  if (leftmostLabel(target.officialDomain) !== leftmostLabel(proposedDomain)) {
+    return null; // (C) shared brand label must match exactly, no fuzzy matching
+  }
+  if (!namesAreConsistent(leftmostLabel(proposedDomain), resolvedCompanyName)) {
+    return null; // (D) resolved company name must agree with the shared brand label
+  }
+  const groundingByField = evidence.groundingByField && typeof evidence.groundingByField === "object" && !Array.isArray(evidence.groundingByField)
+    ? evidence.groundingByField
+    : {};
+  if (!evidenceCorroboratesDomain(groundingByField.resolvedCompanyName, proposedDomain)) {
+    return null; // (E) resolved-name grounding must directly corroborate the proposed domain
+  }
+  if (!everyUrlIsExclusivelyOnDomain(groundingByField.officialDomain, proposedDomain)) {
+    return null; // (F) every official-domain grounding citation must be on the proposed domain
+  }
+  if (!evidenceCorroboratesDomain(evidence.evidenceUrls, proposedDomain)) {
+    return null; // (G) combined evidence URLs must also support the proposed domain
+  }
+  return proposedDomain;
 }
 
 /**
@@ -228,7 +281,16 @@ export function confirmCompanyIdentity(target, identityEvidence) {
       return clarification("invalid_identity_evidence");
     }
     if (proposedDomain && !isSameDomainOrSubdomain(proposedDomain, target.officialDomain)) {
-      return clarification("contradictory_identity");
+      const reconciledDomain = reconcileCrossTldDomain(target, evidence, proposedDomain, resolvedCompanyName);
+      if (!reconciledDomain) {
+        return clarification("contradictory_identity");
+      }
+      return {
+        status: TARGET_STATUS.RESOLVED,
+        kind: TARGET_KIND.DOMAIN,
+        companyName: resolvedCompanyName,
+        officialDomain: reconciledDomain,
+      };
     }
     if (!evidenceCorroboratesDomain(evidence.evidenceUrls, target.officialDomain)) {
       return clarification("insufficient_identity_evidence");

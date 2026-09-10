@@ -241,7 +241,255 @@ test("Mercury ambiguity requires clarification without a lexical domain rule", (
 
 test("the targeting boundary contains no provider client or company-specific production branch", () => {
   const source = readFileSync(new URL("../src/targeting/companyTarget.mjs", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /\b(?:Mercury|shipmercury|Exa|Gemini|Tavily|Groq)\b/i);
+  assert.doesNotMatch(source, /\b(?:Mercury|shipmercury|Exa|Gemini|Tavily|Groq|Notion|Stripe|Craigslist|Canva)\b/i);
   assert.doesNotMatch(source, /\bfetch\s*\(|\bhttps?\.request\s*\(|\baxios\b|\bnode-fetch\b/i);
   assert.doesNotMatch(source, /\bdomainIsConsistentWithName\b/);
+});
+
+// --- B1R1: conservative cross-TLD canonical-domain reconciliation ---
+
+function crossTldEvidence(overrides = {}) {
+  return {
+    resolvedCompanyName: "Notion",
+    officialDomain: "notion.com",
+    ambiguous: false,
+    evidenceUrls: ["https://www.notion.com/about", "https://notion.com/blog/example"],
+    groundingByField: {
+      resolvedCompanyName: ["https://www.notion.com/about"],
+      officialDomain: ["https://www.notion.com/about", "https://notion.com/legal"],
+    },
+    ...overrides,
+  };
+}
+
+test("B1R1: a strongly grounded unambiguous cross-TLD identity reconciles to the provider's canonical domain", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence()), {
+    status: TARGET_STATUS.RESOLVED,
+    kind: TARGET_KIND.DOMAIN,
+    companyName: "Notion",
+    officialDomain: "notion.com",
+  });
+});
+
+test("B1R1: legal-suffix company-name expansions consistent with the shared brand label still reconcile", () => {
+  const target = prepareCompanyTarget("notion.so");
+  for (const resolvedCompanyName of ["Notion, Inc.", "Notion Labs, Inc."]) {
+    assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ resolvedCompanyName })), {
+      status: TARGET_STATUS.RESOLVED,
+      kind: TARGET_KIND.DOMAIN,
+      companyName: resolvedCompanyName,
+      officialDomain: "notion.com",
+    });
+  }
+});
+
+test("B1R1: same-domain and genuine subdomain domain-input behavior is unaffected by the new reconciliation path", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+    officialDomain: "notion.so",
+    evidenceUrls: ["https://www.notion.so/about"],
+  })), {
+    status: TARGET_STATUS.RESOLVED,
+    kind: TARGET_KIND.DOMAIN,
+    companyName: "Notion",
+    officialDomain: "notion.so",
+  });
+  assert.deepEqual(confirmCompanyIdentity(target, {
+    resolvedCompanyName: "Notion",
+    officialDomain: "app.notion.so",
+    evidenceUrls: ["https://app.notion.so/about"],
+    ambiguous: false,
+  }), {
+    status: TARGET_STATUS.RESOLVED,
+    kind: TARGET_KIND.DOMAIN,
+    companyName: "Notion",
+    officialDomain: "notion.so",
+  });
+});
+
+test("B1R1: a different brand label never reconciles regardless of grounding strength", () => {
+  const target = prepareCompanyTarget("notion.so");
+  for (const proposed of ["notionlabs.com", "stripe.com", "other.com"]) {
+    assert.deepEqual(
+      confirmCompanyIdentity(target, crossTldEvidence({
+        officialDomain: proposed,
+        groundingByField: {
+          resolvedCompanyName: [`https://${proposed}/about`],
+          officialDomain: [`https://${proposed}/legal`],
+        },
+        evidenceUrls: [`https://${proposed}/about`],
+      })),
+      { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" },
+    );
+  }
+  // stripe.com -> other.com stays contradictory too (distinct submitted domain)
+  assert.deepEqual(
+    confirmCompanyIdentity(prepareCompanyTarget("stripe.com"), crossTldEvidence({
+      resolvedCompanyName: "Other",
+      officialDomain: "other.com",
+      groundingByField: {
+        resolvedCompanyName: ["https://other.com/about"],
+        officialDomain: ["https://other.com/legal"],
+      },
+      evidenceUrls: ["https://other.com/about"],
+    })),
+    { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" },
+  );
+});
+
+test("B1R1: ambiguous:true never reconciles even with an otherwise-matching brand label", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ ambiguous: true })), {
+    status: TARGET_STATUS.CLARIFICATION_NEEDED,
+    reason: "contradictory_identity",
+  });
+});
+
+test("B1R1: missing ambiguity never reconciles even with an otherwise-matching brand label", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ ambiguous: undefined })), {
+    status: TARGET_STATUS.CLARIFICATION_NEEDED,
+    reason: "contradictory_identity",
+  });
+});
+
+test("B1R1: a resolved company name inconsistent with the shared brand label does not reconcile", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ resolvedCompanyName: "Acme Systems" })), {
+    status: TARGET_STATUS.CLARIFICATION_NEEDED,
+    reason: "contradictory_identity",
+  });
+});
+
+test("B1R1: resolved-name grounding lacking direct proposed-domain corroboration does not reconcile", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+    groundingByField: {
+      resolvedCompanyName: ["https://unrelated.test/about"],
+      officialDomain: ["https://notion.com/legal"],
+    },
+  })), { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" });
+});
+
+test("B1R1: absent, empty, or non-array official-domain grounding does not reconcile", () => {
+  const target = prepareCompanyTarget("notion.so");
+  for (const officialDomain of [undefined, [], "https://notion.com/legal"]) {
+    assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+      groundingByField: { resolvedCompanyName: ["https://notion.com/about"], officialDomain },
+    })), { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" });
+  }
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ groundingByField: undefined })), {
+    status: TARGET_STATUS.CLARIFICATION_NEEDED,
+    reason: "contradictory_identity",
+  });
+});
+
+test("B1R1: official-domain grounding mixing proposed-domain and unrelated-domain citations does not reconcile", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+    groundingByField: {
+      resolvedCompanyName: ["https://notion.com/about"],
+      officialDomain: ["https://notion.com/legal", "https://unrelated.test/other"],
+    },
+  })), { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" });
+});
+
+test("B1R1: a malformed evidence URL anywhere in official-domain grounding does not reconcile", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+    groundingByField: {
+      resolvedCompanyName: ["https://notion.com/about"],
+      officialDomain: ["not a url", "https://notion.com/legal"],
+    },
+  })), { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" });
+});
+
+test("B1R1: multi-label domain shapes on either side never enter the reconciliation rule", () => {
+  assert.deepEqual(
+    confirmCompanyIdentity(prepareCompanyTarget("app.example.com"), crossTldEvidence({
+      resolvedCompanyName: "Example",
+      officialDomain: "app.example.io",
+      groundingByField: {
+        resolvedCompanyName: ["https://app.example.io/about"],
+        officialDomain: ["https://app.example.io/legal"],
+      },
+      evidenceUrls: ["https://app.example.io/about"],
+    })),
+    { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" },
+  );
+  assert.deepEqual(
+    confirmCompanyIdentity(prepareCompanyTarget("notion.so"), crossTldEvidence({ officialDomain: "notion.example.com" })),
+    { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" },
+  );
+});
+
+test("B1R1: deceptive hostnames do not corroborate the proposed domain during reconciliation", () => {
+  const target = prepareCompanyTarget("notion.so");
+  for (const deceptive of ["https://notion.com.example.test/news", "https://notnotion.com/news"]) {
+    assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+      groundingByField: {
+        resolvedCompanyName: [deceptive],
+        officialDomain: [deceptive],
+      },
+      evidenceUrls: [deceptive],
+    })), { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" });
+  }
+});
+
+test("B1R1: combined evidenceUrls must also corroborate the proposed domain even when field grounding is strong", () => {
+  const target = prepareCompanyTarget("notion.so");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ evidenceUrls: ["https://unrelated.test/about"] })), {
+    status: TARGET_STATUS.CLARIFICATION_NEEDED,
+    reason: "contradictory_identity",
+  });
+});
+
+test("B1R1: brand-label matching is case-insensitive end to end via existing hostname normalization", () => {
+  const target = prepareCompanyTarget("NOTION.SO");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({ officialDomain: "NOTION.COM" })), {
+    status: TARGET_STATUS.RESOLVED,
+    kind: TARGET_KIND.DOMAIN,
+    companyName: "Notion",
+    officialDomain: "notion.com",
+  });
+});
+
+test("B1R1: IDN/punycode-homograph domains do not silently corroborate a different-codepoint domain", () => {
+  // "xn--noton-p2e.com" is the real IDNA/punycode encoding of "notіon.com"
+  // using Cyrillic U+0456 in place of Latin "i" -- a classic homograph. It
+  // must not be treated as the same brand label as "notion.so"; URL's own
+  // IDNA normalization keeps genuinely different codepoints as distinct
+  // ASCII labels, so this remains contradictory_identity rather than
+  // reconciling.
+  const target = prepareCompanyTarget("notion.so");
+  const homographDomain = new URL(`https://not${"і"}on.com/`).hostname;
+  assert.equal(homographDomain, "xn--noton-p2e.com");
+  assert.deepEqual(confirmCompanyIdentity(target, crossTldEvidence({
+    officialDomain: homographDomain,
+    groundingByField: {
+      resolvedCompanyName: [`https://${homographDomain}/about`],
+      officialDomain: [`https://${homographDomain}/legal`],
+    },
+    evidenceUrls: [`https://${homographDomain}/about`],
+  })), { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason: "contradictory_identity" });
+});
+
+test("B1R1: a short/single-character shared brand label can still reconcile when every condition is otherwise satisfied (documents a known conservative-design limitation, not a bug: unrelated companies sharing a short label are not distinguishable by this rule alone)", () => {
+  const target = prepareCompanyTarget("x.co");
+  assert.deepEqual(confirmCompanyIdentity(target, {
+    resolvedCompanyName: "X Corp",
+    officialDomain: "x.com",
+    ambiguous: false,
+    evidenceUrls: ["https://x.com/about"],
+    groundingByField: {
+      resolvedCompanyName: ["https://x.com/about"],
+      officialDomain: ["https://x.com/legal"],
+    },
+  }), {
+    status: TARGET_STATUS.RESOLVED,
+    kind: TARGET_KIND.DOMAIN,
+    companyName: "X Corp",
+    officialDomain: "x.com",
+  });
 });

@@ -304,15 +304,15 @@ function notionSoDomainMismatchFetch() {
     if (url === EXA_SEARCH_ENDPOINT) {
       return jsonResponse(
         searchPayload({
-          // The real B1 domain-input identity check (src/targeting/companyTarget.mjs,
-          // TARGET_KIND.DOMAIN branch) compares this provider-returned officialDomain
-          // against the submitted "notion.so" target. "notion.com" is neither equal
-          // to nor a subdomain of "notion.so", so the real production targeting code
-          // returns clarification("contradictory_identity") -- this is not injected,
-          // it is the actual documented mismatch behavior exercised end to end.
-          identity: { resolvedCompanyName: "Notion Labs, Inc.", officialDomain: "notion.com", ambiguous: false },
+          // A different-brand mismatch (unrelated "othercorp.com" for a "notion.so"
+          // target): B1R1's cross-TLD reconciliation (src/targeting/companyTarget.mjs)
+          // requires the leftmost hostname label to match exactly, so this remains
+          // the genuine contradictory_identity path even after B1R1. The
+          // same-brand, strongly-grounded notion.com shape this fixture used before
+          // B1R1 now legitimately reconciles instead -- see test 16 below.
+          identity: { resolvedCompanyName: "Othercorp Labs, Inc.", officialDomain: "othercorp.com", ambiguous: false },
           results: [
-            { title: "Notion product update", url: "https://notion.com/blog/update", publishedDate: "2026-09-01", highlights: ["Notion product update."] },
+            { title: "Othercorp product update", url: "https://othercorp.com/blog/update", publishedDate: "2026-09-01", highlights: ["Othercorp product update."] },
           ],
         }),
       );
@@ -321,7 +321,7 @@ function notionSoDomainMismatchFetch() {
   };
 }
 
-test("15: runValidationCase drives the real targeting/discovery pipeline to the genuine contradictory_identity reason for a domain-input mismatch (notion.so-shaped fixture), while the public B5 reason still collapses to company_ambiguous", async () => {
+test("15: runValidationCase drives the real targeting/discovery pipeline to the genuine contradictory_identity reason for a different-brand domain-input mismatch (notion.so-shaped fixture), while the public B5 reason still collapses to company_ambiguous", async () => {
   const summary = await runValidationCase("notion.so", "test-key", { fetchImpl: notionSoDomainMismatchFetch(), now: NOW });
 
   assert.equal(summary.final.state, "clarification_needed");
@@ -335,4 +335,37 @@ test("15: runValidationCase drives the real targeting/discovery pipeline to the 
     exaContentsRequests: 0,
     publisherRequests: 0,
   });
+});
+
+test("16: B1R1 regression — a strongly grounded same-brand cross-TLD identity now reconciles through the real targeting/discovery pipeline instead of stopping at contradictory_identity", async () => {
+  // This is the exact shape (Notion Labs, Inc. / notion.com / ambiguous:false,
+  // fully corroborated) that test 15 used before B1R1 to demonstrate
+  // contradictory_identity. That was the correct, intended behavior at the
+  // time; B1R1's conservative cross-TLD reconciliation now legitimately
+  // accepts it instead, so this regression proves the fix through the real
+  // production discovery path used by the live validation harness.
+  const reconcilingFetch = async (url) => {
+    if (url === EXA_SEARCH_ENDPOINT) {
+      return jsonResponse(
+        searchPayload({
+          identity: { resolvedCompanyName: "Notion Labs, Inc.", officialDomain: "notion.com", ambiguous: false },
+          results: [
+            { title: "Notion product update", url: "https://notion.com/blog/update", publishedDate: "2026-09-01", highlights: ["Notion product update."] },
+          ],
+        }),
+      );
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+
+  // Verification/description are not mocked here (out of scope for this B1
+  // targeting fix), so downstream stages hit unmocked publisher/Contents
+  // fetches and the pipeline honestly settles on `unavailable` without
+  // throwing (B3/B4B classify those as provider-layer failures). This test
+  // asserts only that B1/B2 identity resolution itself now succeeds with the
+  // reconciled canonical domain, which is the B1R1 scope.
+  const summary = await runValidationCase("notion.so", "test-key", { fetchImpl: reconcilingFetch, now: NOW });
+  assert.equal(summary.discovery.state, "ready_for_verification");
+  assert.equal(summary.discovery.reason, null);
+  assert.deepEqual(summary.identity, { companyName: "Notion Labs, Inc.", officialDomain: "notion.com" });
 });
