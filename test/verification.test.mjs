@@ -554,3 +554,233 @@ test("B3 smoke diagnostics separate the fallback trace after broad exhaustion", 
 test("B3 has no historical-script dependency and rejects non-ready B2 input before network", async () => {
   await assert.rejects(() => verifyCompanyDiscovery({ state: "clarification_needed" }, "test-key"), /ready_for_verification/);
 });
+
+// --- B3R3: narrow FIRST_PARTY-only brand-anchor company-matching fallback ---
+
+const NOTION = { inputKind: "domain", companyName: "Notion Labs, Inc.", officialDomain: "notion.com" };
+
+function notionArticle({ title = "Introducing Notion's Developer Platform", date = "2026-09-01", body } = {}) {
+  const articleBody =
+    body ??
+    "Notion today announced a substantial new developer platform for building custom integrations and automations. Notion says the material update expands what teams can build on top of the product for customers.";
+  const metadata = `<script type="application/ld+json">${JSON.stringify({ "@type": "NewsArticle", headline: title, datePublished: date })}</script>`;
+  return `<!doctype html><html><head>${metadata}<title>${title}</title></head><body><article><h1>${title}</h1><p>${articleBody}</p></article></body></html>`;
+}
+
+test("B3R3: existing strict full-name company matching is unaffected", async () => {
+  const strict = await verifyCandidate(candidate(), COMPANY, { now: NOW, fetchImpl: async () => response(article()) });
+  assert.equal(strict.accepted, true);
+  assert.equal(strict.evidence.sourceClass, "FIRST_PARTY");
+});
+
+test("B3R3: a first-party Notion page saying 'Notion' but never 'Labs' passes company matching and can be accepted", async () => {
+  const result = await verifyCandidate(
+    candidate({ title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/developer-platform" }),
+    NOTION,
+    { now: NOW, fetchImpl: async () => response(notionArticle()) },
+  );
+  assert.equal(result.accepted, true);
+  assert.equal(result.evidence.sourceClass, "FIRST_PARTY");
+  assert.equal(result.evidence.recencyBucket, "RECENT");
+  assert.doesNotMatch(notionArticle(), /\bLabs\b/i);
+});
+
+test("B3R3: the identical Notion-shaped content on an OTHER/secondary domain does not receive brand fallback", async () => {
+  const result = await verifyCandidate(
+    candidate({ title: "Introducing Notion's Developer Platform", url: "https://technewsdaily.com/notion-developer-platform" }),
+    NOTION,
+    { now: NOW, fetchImpl: async () => response(notionArticle()) },
+  );
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "unsupported_claim");
+});
+
+test("B3R3: a first-party page whose text never mentions the domain brand remains rejected", async () => {
+  const html = article({ title: "Acme launches Atlas platform" }); // says "Acme", never "Notion"
+  const result = await verifyCandidate(
+    candidate({ title: "Acme launches Atlas platform", url: "https://notion.com/blog/unrelated" }),
+    NOTION,
+    { now: NOW, includeDiagnostic: true, fetchImpl: async () => response(html) },
+  );
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "unsupported_claim");
+  assert.equal(result.diagnostic.sourceClass, "FIRST_PARTY");
+});
+
+test("B3R3: a first-party page whose domain brand is inconsistent with the resolved company name remains rejected", async () => {
+  const unrelatedCompany = { inputKind: "domain", companyName: "Widget Corp", officialDomain: "acme.test" };
+  const result = await verifyCandidate(candidate(), unrelatedCompany, {
+    now: NOW,
+    includeDiagnostic: true,
+    fetchImpl: async () => response(article()), // says "Acme", matching the domain brand but not the resolved name
+  });
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "unsupported_claim");
+  assert.equal(result.diagnostic.sourceClass, "FIRST_PARTY");
+});
+
+test("B3R3: an existing company with a strict full-name match is unaffected even on an OTHER source", async () => {
+  const result = await verifyCandidate(
+    candidate({ title: "Stripe expands Atlas payments", url: "https://publisher.test/stripe-atlas" }),
+    { ...COMPANY, companyName: "Stripe, Inc." },
+    {
+      now: NOW,
+      fetchImpl: async () => response(article({ title: "Stripe expands Atlas payments", body: "Stripe expands Atlas payments with a substantial new company capability for enterprise customers." })),
+    },
+  );
+  assert.equal(result.accepted, true);
+  assert.equal(result.evidence.sourceClass, "OTHER");
+});
+
+test("B3R3: a deceptive impostor hostname is classified OTHER and cannot use brand fallback", async () => {
+  const result = await verifyCandidate(
+    candidate({ title: "Introducing Notion's Developer Platform", url: "https://notion.com.example.test/blog/developer-platform" }),
+    NOTION,
+    { now: NOW, includeDiagnostic: true, fetchImpl: async () => response(notionArticle()) },
+  );
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "unsupported_claim");
+  assert.equal(result.diagnostic.sourceClass, "OTHER");
+});
+
+test("B3R3: brand fallback does not bypass triviality, date, staleness, or duplicate rejection", async () => {
+  const trivial = await verifyCandidate(
+    candidate({ title: "Notion fixes a bug", url: "https://notion.com/blog/bugfix" }),
+    NOTION,
+    { now: NOW, fetchImpl: async () => response(notionArticle({ title: "Notion fixes a bug", body: "Notion fixes a bug in a routine bug fix release notes entry for a small code patch and minor maintenance change with no material company-level development." })) },
+  );
+  assert.equal(trivial.reason, "trivial");
+
+  const noDate = await verifyCandidate(
+    candidate({ title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/no-date" }),
+    NOTION,
+    { now: NOW, fetchImpl: async () => response(notionArticle({ date: null })) },
+  );
+  assert.equal(noDate.reason, "date_unknown");
+
+  const stale = await verifyCandidate(
+    candidate({ title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/stale" }),
+    NOTION,
+    { now: NOW, fetchImpl: async () => response(notionArticle({ date: "2026-01-01" })) },
+  );
+  assert.equal(stale.reason, "stale");
+
+  const first = candidate({ rank: 1, title: "Notion launches Atlas feature", url: "https://notion.com/blog/atlas-1", highlights: ["Notion launches Atlas feature."] });
+  const duplicateOfFirst = candidate({ rank: 2, title: "Notion launches Atlas feature", url: "https://notion.com/blog/atlas-2", highlights: ["Notion launches Atlas feature."] });
+  const atlasHtml = notionArticle({ title: "Notion launches Atlas feature", body: "Notion launches Atlas feature as a substantial new capability for teams building on the product." });
+  const dedupeOptions = {
+    now: NOW,
+    sourceFetchImpl: sourceMap({ [first.url]: atlasHtml, [duplicateOfFirst.url]: atlasHtml }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  };
+  const dedupeResult = await verifyCompanyDiscovery(
+    { state: "ready_for_verification", company: NOTION, prioritized: [first, duplicateOfFirst] },
+    "test-key",
+    dedupeOptions,
+  );
+  assert.equal(dedupeResult.state, "insufficient_evidence");
+  assert.equal(dedupeResult.evidence.length, 1);
+  assert.equal(dedupeResult.evidence[0].sourceClass, "FIRST_PARTY");
+  const dedupeObserved = await verifyCompanyDiscoveryForSmoke(
+    { state: "ready_for_verification", company: NOTION, prioritized: [first, duplicateOfFirst] },
+    "test-key",
+    dedupeOptions,
+  );
+  assert.deepEqual(dedupeObserved.diagnostic.broad.map((entry) => entry.reason), ["accepted", "duplicate"]);
+});
+
+test("B3R3: brand fallback lets company matching pass but does not bypass support-sentence matching", async () => {
+  // The article's real headline/body (via notionArticle()'s defaults) is
+  // about the Developer Platform launch and contains "Notion" (satisfying
+  // B3R3's brand fallback, since "Labs" is absent and strict matching
+  // fails) but never discusses the specific "Quantum Ledger integration"
+  // event the candidate/highlight claims. No sentence in the body shares
+  // enough anchor tokens with that claimed event, so sentenceForEvidence()
+  // must still reject it -- proving company matching and support-sentence
+  // matching are independent gates and the fallback bypasses neither.
+  const mismatchedCandidate = candidate({
+    title: "Notion unveils Quantum Ledger integration",
+    url: "https://notion.com/blog/quantum-ledger",
+    highlights: ["Notion unveils Quantum Ledger integration for enterprise finance teams."],
+  });
+  const result = await verifyCandidate(mismatchedCandidate, NOTION, {
+    now: NOW,
+    includeDiagnostic: true,
+    fetchImpl: async () => response(notionArticle({ date: "2026-08-20" })),
+  });
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "unsupported_claim");
+  // Confirm the rejection is genuinely at the support-sentence gate, not an
+  // earlier one: sourceClass is set right before the company-match check
+  // (so its presence proves that gate was reached), and recencyBucket is
+  // only ever set by code that runs strictly after company matching and
+  // date presence both succeed -- its non-null "RECENT" value proves this
+  // candidate passed company matching (via brand fallback) and recency,
+  // leaving only the trailing support-sentence check as the rejection point.
+  assert.equal(result.diagnostic.sourceClass, "FIRST_PARTY");
+  assert.equal(result.diagnostic.recencyBucket, "RECENT");
+});
+
+test("B3R3: a hyphenated multi-token official-domain brand requires every token present, both in the resolved name and in the article text", async () => {
+  const bigApple = { inputKind: "domain", companyName: "Big Apple Media, Inc.", officialDomain: "big-apple.com" };
+  const bothTokensPresent = await verifyCandidate(
+    candidate({ title: "Big Apple launches new streaming platform", url: "https://big-apple.com/news/streaming" }),
+    bigApple,
+    {
+      now: NOW,
+      fetchImpl: async () => response(article({
+        title: "Big Apple launches new streaming platform",
+        body: "Big Apple today launched a substantial new streaming platform for subscribers. Big Apple says the material update expands its content library for customers.",
+      })),
+    },
+  );
+  assert.equal(bothTokensPresent.accepted, true);
+  assert.equal(bothTokensPresent.evidence.sourceClass, "FIRST_PARTY");
+
+  const onlyOneTokenPresent = await verifyCandidate(
+    candidate({ title: "Big launches new streaming platform", url: "https://big-apple.com/news/streaming-2" }),
+    bigApple,
+    {
+      now: NOW,
+      includeDiagnostic: true,
+      fetchImpl: async () => response(article({
+        title: "Big launches new streaming platform",
+        body: "Big today launched a substantial new streaming platform for subscribers. Big says the material update expands its content library for customers.",
+      })),
+    },
+  );
+  assert.equal(onlyOneTokenPresent.accepted, false);
+  assert.equal(onlyOneTokenPresent.reason, "unsupported_claim");
+  assert.equal(onlyOneTokenPresent.diagnostic.sourceClass, "FIRST_PARTY");
+});
+
+test("B3R3: pipeline-level regression — real B3 flow accepts multiple valid first-party Notion candidates that say Notion but never Labs", async () => {
+  const broad = [
+    candidate({ rank: 1, title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/developer-platform", highlights: ["Introducing Notion's Developer Platform."] }),
+    candidate({ rank: 2, title: "Notion expands multi-region infrastructure", url: "https://notion.com/blog/multi-region", highlights: ["Notion expands multi-region infrastructure."] }),
+    candidate({ rank: 3, title: "Notion adds new AI agent controls", url: "https://notion.com/blog/agent-controls", highlights: ["Notion adds new AI agent controls."] }),
+  ];
+  const pages = {
+    "https://notion.com/blog/developer-platform": notionArticle({
+      title: "Introducing Notion's Developer Platform",
+      body: "Notion today announced a substantial new developer platform for building custom integrations. Notion says this material update expands what teams can build for customers.",
+    }),
+    "https://notion.com/blog/multi-region": notionArticle({
+      title: "Notion expands multi-region infrastructure",
+      body: "Notion expanded its multi-region infrastructure to add substantial new regional capacity for enterprise customers. Notion says the material development improves reliability for teams.",
+    }),
+    "https://notion.com/blog/agent-controls": notionArticle({
+      title: "Notion adds new AI agent controls",
+      body: "Notion added substantial new controls for which AI models agents can use across a workspace. Notion says the material update gives teams more control over automation.",
+    }),
+  };
+  const result = await verifyCompanyDiscovery({ state: "ready_for_verification", company: NOTION, prioritized: broad }, "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap(pages),
+    exaFetchImpl: async () => { throw new Error("fallback must not run"); },
+  });
+  assert.equal(result.state, "verified");
+  assert.equal(result.evidence.length, 3);
+  assert.equal(result.evidence.every((item) => item.sourceClass === "FIRST_PARTY"), true);
+  for (const page of Object.values(pages)) assert.doesNotMatch(page, /\bLabs\b/i);
+});

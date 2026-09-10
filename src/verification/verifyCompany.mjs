@@ -1,5 +1,5 @@
 import { requestOfficialDomainFallback } from "../discovery/exaBroadDiscovery.mjs";
-import { areDuplicateCandidates, classifyRecency, classifySource, selectSignals } from "../selection/selectSignals.mjs";
+import { SOURCE_CLASS, areDuplicateCandidates, classifyRecency, classifySource, selectSignals } from "../selection/selectSignals.mjs";
 import { LEGAL_NAME_SUFFIXES } from "../targeting/companyTarget.mjs";
 import { fetchHtmlSource } from "./sourceFetch.mjs";
 
@@ -222,6 +222,36 @@ function matchesCompany(text, companyName) {
   return companyTokens.length > 0 && companyTokens.every((token) => textTokens.has(token));
 }
 
+/**
+ * B3R3: the leftmost label of the already-confirmed official domain, e.g.
+ * "notion.com" -> "notion". Never fetches or guesses; uses only the
+ * B1/B1R1-confirmed identity already on `company`.
+ */
+function officialDomainBrandLabel(officialDomain) {
+  if (typeof officialDomain !== "string" || officialDomain.length === 0) return "";
+  return officialDomain.split(".")[0];
+}
+
+/**
+ * B3R3 narrow first-party fallback for company-name matching. Only usable
+ * when the source has already been classified FIRST_PARTY against the
+ * confirmed official domain. Requires: at least one deterministic brand
+ * token derived from that domain; that token to be represented in the
+ * resolved company name (so an unrelated official-domain label can never be
+ * used); and the token to literally appear in the article text. This never
+ * relaxes matching for OTHER/secondary sources, and never accepts a
+ * first-party page on domain alone -- textual brand evidence is still
+ * mandatory.
+ */
+function matchesFirstPartyBrand(text, company) {
+  const brandTokens = tokens(officialDomainBrandLabel(company.officialDomain));
+  if (brandTokens.length === 0) return false;
+  const companyNameTokens = new Set(tokens(company.companyName));
+  if (!brandTokens.every((token) => companyNameTokens.has(token))) return false;
+  const textTokens = new Set(tokens(text));
+  return brandTokens.every((token) => textTokens.has(token));
+}
+
 function sentenceForEvidence(body, anchorTokens) {
   const sentences = body.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [];
   for (const sentence of sentences) {
@@ -286,7 +316,10 @@ export async function verifyCandidate(candidate, company, options = {}) {
   const sourceClass = classifySource(fetched.resolvedUrl, company.officialDomain);
   diagnostic.sourceClass = sourceClass;
   const fullText = `${article.sourceTitle} ${article.body}`;
-  if (!matchesCompany(fullText, company.companyName)) {
+  const companyMatches =
+    matchesCompany(fullText, company.companyName) ||
+    (sourceClass === SOURCE_CLASS.FIRST_PARTY && matchesFirstPartyBrand(fullText, company));
+  if (!companyMatches) {
     return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM }, diagnostic, options);
   }
   if (isObviouslyTrivial(fullText)) {
