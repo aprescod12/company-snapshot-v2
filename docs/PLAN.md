@@ -602,6 +602,15 @@ Two further zero-repair, zero-`src/`-change diagnostics investigated the two rem
 Cumulative Exa Search: **39 → 42** across three post-B3R3 diagnostics: Craigslist **39 → 40**; Canva evidence-quality production run **40 → 41**; Canva raw identity-evidence diagnostic **41 → 42**. Contents remain **9**; retries remain **0**. No B1–B5 production `src/` file changed by any diagnostic. See `docs/PHASE_B_OWNER_DECISION.md` for the complete record.
 
 ## Phase C — Frontend
+
+### C1 — thin server-side HTTP boundary
+
+**2026-09-10 outcome: implemented locally and zero-network tested; not deployed.** `api/snapshot.mjs` is one dependency-free native Vercel Node function using the Web-standard `{ fetch(request) }` export. It accepts only `POST` JSON bodies with a nonblank string `input`, uses trimming only to detect emptiness, and passes the original string to `createCompanySnapshot(input, apiKey)` exactly once. `EXA_API_KEY` is read from the server environment per request and is never accepted from the body, URL, or client-visible configuration.
+
+The endpoint returns every valid B5 `snapshot`, `clarification_needed`, `insufficient_evidence`, or `unavailable` result unchanged with HTTP 200, preserving exact source URLs. Malformed/invalid HTTP input maps to the existing `clarification_needed` / `invalid_input` public object (400, or 405 plus `Allow: POST` for unsupported methods). Missing server configuration maps to sanitized `unavailable` / `provider_unavailable` with 503; unexpected service or serialization failures map to that same sanitized object with 500. Responses are JSON with `Cache-Control: no-store`. No provider error, body, tag, diagnostic, stack, or API key is logged or returned; there is no retry, CORS layer, framework, dependency, caching layer, rate limiter, or duplicated B1–B5 logic.
+
+One factory-local dependency seam supplies a fake snapshot service and environment to zero-network tests while production defaults remain the real B5 entry point and `process.env`. Focused endpoint tests pass 9/9 and cover all four B5 states, exact three-signal/source-URL pass-through, 0–2 insufficient-evidence signals, invalid and malformed requests, unsupported methods, missing configuration, sanitized unexpected errors, JSON headers, server-only key handling, and exact-once/no-retry behavior. The complete zero-network suite passes 301/301; syntax checks pass. C1 made 0 Exa Search, 0 Exa Contents, 0 publisher, and 0 deployment-validation requests, leaving cumulative accounting at Search 42 / Contents 9 / retries 0. No frozen B1–B5 file changed. C2 frontend/UI and deployment remain deferred pending the mandatory actual-diff review, push authorization, remote confirmation, and formal C1 approval.
+
 Build the required one-page experience:
 - input;
 - honest loading;

@@ -949,7 +949,22 @@ No B1/B2/B4A/B4B/B5 production `src/` file changed; B3 changed only via this one
 No B1–B5 production `src/` file changed by either diagnostic or by this closure. See `docs/PHASE_B_OWNER_DECISION.md` for the complete record.
 
 ## Phase C
-_Not yet run._
+
+### C1 — server-side HTTP boundary
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | Added one dependency-free native Vercel Web handler at `api/snapshot.mjs`; no frontend, local server, deployment, or frozen B1–B5 behavior changed. |
+| Request contract | `POST` JSON `{ "input": string }`; only nonblank strings proceed, and the original string is passed unchanged to `createCompanySnapshot(input, apiKey)` exactly once. Unsupported methods return 405 plus `Allow: POST`; malformed/missing/non-string/blank input returns 400. |
+| Public response contract | Valid B5 `snapshot`, `clarification_needed`, `insufficient_evidence`, and `unavailable` objects pass through unchanged with HTTP 200. Invalid requests reuse `clarification_needed` / `invalid_input`; missing server configuration and unexpected failures reuse sanitized `unavailable` / `provider_unavailable` with HTTP 503 and 500 respectively. No new public state/reason was introduced. |
+| Security | Production reads `EXA_API_KEY` only from `process.env`, never a body or URL. Error handling returns no exception message, stack, provider body/tag/diagnostic, or key. Responses use JSON and `Cache-Control: no-store`; source URLs are not rewritten. |
+| Focused zero-network tests | `node --test test/snapshot-api.test.mjs` — **9/9 passed**. Covers the Vercel `{ fetch }` entry point; a full 3-signal snapshot and exact source URLs; all non-snapshot B5 states with exact-once calls; partial 0/1/2-signal insufficient results; missing/non-string/blank input; malformed JSON; unsupported methods; missing/blank API-key configuration; untrimmed valid input/key pass-through; sanitized unexpected backend errors; no retry; JSON/cache/method headers; and key non-disclosure. |
+| Full zero-network suite | `node --test test/*.test.mjs` — **301/301 passed** (292 pre-existing + 9 C1). |
+| Syntax checks | `node --check api/snapshot.mjs` and `node --check test/snapshot-api.test.mjs` passed. |
+| Provider/deployment activity | C1 made 0 Exa Search, 0 Exa Contents, 0 publisher/company, and 0 deployment-validation requests; no live provider or endpoint validation occurred. Cumulative accounting remains Search **42** / Contents **9** / retries **0**. |
+| Protected-path audit | No file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, `src/description/`, `src/snapshot/`, or `src/orchestration/` changed. No dependency or framework was added. |
+
+Result: **`C1 IMPLEMENTED LOCALLY AND ZERO-NETWORK TESTED`**. This establishes the thin HTTP adapter behavior only. It is not deployment validation, frontend completion, broad provider reliability evidence, formal C1 approval, or authorization to begin C2.
 
 ## Phase D / production
 _Not yet run._
