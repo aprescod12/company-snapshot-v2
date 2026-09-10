@@ -1125,17 +1125,19 @@ Two further independent bounded sub-agent reviews were used for this correction.
 
 **Focused test result:** `node --test test/verification.test.mjs` — 42/42 passed (33 pre-existing + 9 total D3-related tests: the original Linear reproduction, anti-overdedupe A–E and G, and the two correction regressions).
 **Full suite result:** `node --test test/*.test.mjs` — 361/361 passed (352 pre-D3 baseline + 9 D3-related).
-**Production replay:** **PENDING** — the repaired and corrected code has not been reviewed, pushed, or replayed against the live `linear.app` case. That replay requires fresh project-owner/ChatGPT authorization and is explicitly deferred, per D3's scope.
+**Production replay:** **PASS** — after actual-diff approval, commit `1de14141aff8462dcbbf5e08e3706625b014d6b7` was pushed to `main` and Vercel reported a successful deployment for that exact commit. The project owner then submitted `linear.app` exactly once in the production browser. The app resolved `Linear` / `linear.app` and returned honest `insufficient_evidence` with one displayed signal: `Sharing Linear's growth with the people building it` (Aug 26, 2026; visible source domain `linear.app`). The previously duplicated Pulse2 article covering the same $99 million tender / $2.5 billion valuation event did not appear as a second signal. This passes the specific D3 production defect check: one underlying event is no longer represented as two signals. No retry was performed.
 
 ## F. Provider accounting
 
 - Starting after D2: Search 48–54 / Contents 14 / retries 0
 - Final-assessment manual production additions (Microsoft, Anthropic, linear.app, Craigslist, craigslist.org, Mercury, `https://`): Search 6–8 / Contents 2 / retries 0
-- Current cumulative before any post-repair live replay: **Search 54–62 / Contents 16 / retries 0**
-- D3 implementation/testing activity: **Search 0 / Contents 0 / retries 0** — no live provider call was made during D3
+- Cumulative before the post-repair replay: **Search 54–62 / Contents 16 / retries 0**
+- D3 implementation/testing activity: **Search 0 / Contents 0 / retries 0** — no live provider call was made during D3 implementation
+- One authorized post-repair `linear.app` production replay: **Search +1–2 / Contents +1 / retries 0**
+- Current cumulative after the replay: **Search 55–64 / Contents 17 / retries 0**
 
 ## G. Readiness status
 
-**FINAL ASSESSMENT VALIDATION — CORRECTION IMPLEMENTED LOCALLY / PRODUCTION REPLAY PENDING**
+**FINAL ASSESSMENT VALIDATION — D3 DISTINCTNESS DEFECT CLOSED / FINAL SKEPTICAL REVIEW PENDING**
 
-The deterministic repair passes its full regression suite (focused and full), but the fixed code has not been pushed or replayed against production, so final submission validation is **not** declared fully passed. A fresh, explicitly authorized live `linear.app` replay (and project-owner/ChatGPT review of the actual diff) remains required before this phase's findings can be closed out.
+The deterministic repair passed its full zero-network regression suite, was independently actual-diff reviewed, pushed, successfully deployed, and then validated with exactly one production `linear.app` replay. The duplicate-event failure that triggered D3 did not recur: only one instance of the tender/valuation event survived into the displayed signal set. D3 is therefore closed. Final submission readiness is not yet declared because the remaining final skeptical review/submission checks still need to be completed.
