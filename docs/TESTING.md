@@ -1171,7 +1171,9 @@ The E2 finding's original hypothesis (abbreviated notation like `$6.76B`) was in
 
 Two narrow, generic, company-agnostic corrections in `src/verification/verifyCompany.mjs`:
 1. `balancedTagBodyHtml()` — a tag-depth-counting scan replacing the naive non-greedy `<article>`/`<main>` regex, correctly pairing the first opening tag with its true matching close regardless of nesting.
-2. A bounded `NUMBER_WORDS` dictionary (spelled-out cardinals "one"–"twenty") added to `collectQuantityAnchors()`, so "one billion" and "1 billion" normalize to the same anchor key. Word-form anchors are tagged `:count` only, never `:currency`.
+2. A bounded `NUMBER_WORDS` dictionary (spelled-out cardinals "one"–"twenty") added to `collectQuantityAnchors()`, so "one billion" and "1 billion" normalize to the same anchor key.
+
+*(The claim that word-form anchors were tagged `:count` only, never `:currency`, was corrected by project-owner review — see "Project-owner review corrections" below.)*
 
 **Independent review before commit found two real safety gaps in the first version**, both corrected:
 - The tag-depth scanner had no awareness of `<script>`/`<style>`/HTML-comment regions, so a literal unbalanced `<article`-shaped substring inside an embedded JSON/hydration payload could make the scanner overrun past the true closing tag into unrelated sibling content (a risk the old regex could never produce, since it could only truncate early, never overrun). Fixed by treating `<script>...</script>`, `<style>...</style>`, and `<!-- -->` as atomic skipped tokens during the depth scan itself.
@@ -1188,11 +1190,38 @@ Two narrow, generic, company-agnostic corrections in `src/verification/verifyCom
 - Anti-overrun (pipeline + unit-level): an unbalanced `<article`-shaped substring inside an embedded script payload does not make the scanner walk past the true close into an unrelated sibling section.
 - Compound-number guard: "twenty-one billion" is not misread as "one billion".
 
-Full suite: `node --test test/*.test.mjs` → **368/368 passed**. `node --check src/verification/verifyCompany.mjs` → clean.
+Full suite (at this point): `node --test test/*.test.mjs` → **368/368 passed**. `node --check src/verification/verifyCompany.mjs` → clean.
 
 ## Independent review
 
 Two development-time sub-agents ran: an adversarial precision reviewer (constructed and ran actual reproducing fixtures through the real pipeline; found the script/style-unaware overrun risk and the tautological test H) and an independent diff reviewer (found the compound-number gap; confirmed diff scope limited to the two intended files, no public-contract change, no dead code). Both findings were corrected before commit; the full suite was re-verified green after each correction.
+
+## Project-owner review corrections (2026-09-10)
+
+Project-owner actual-diff review of local commit `4f623ca9461500951d8e49e7704e2d3e858c5411` found two further concrete, real gaps, both corrected in a follow-up local commit above it.
+
+**Finding 1 — initial-opener exclusion gap.** `balancedTagBodyHtml()`'s script/style/comment exclusion only applied once the depth-counting scan began, but the scan started AFTER a separate, unaware initial `openTagPattern.exec(html)` search that could itself select a fake `<tagName...>`-shaped string sitting inside a `<script>` block earlier in the document as the "opening" tag. Reproduced directly against commit `4f623ca` with a minimized fixture (a fake opener inside a `<script>` before the real `<article>`, with unrelated numeric sibling content after it): the extracted body wrongly included the sibling `<aside>` content. **Corrected** by rewriting `balancedTagBodyHtml()` as a single unified pass with no separate initial search — `<script>`/`<style>`/comment regions are treated as atomic skipped tokens from the very start of the scan, and `contentStart` is only established at the first genuine structural opening token found outside those regions. This also corrects the prior documentation claim that such content "can never be mistaken for a real nested open/close tag" — that guarantee did not actually hold for the initial opener in the first version; it does now, since there is no longer a separate, unaware initial search at all.
+
+**Finding 2 — spelled-out currency misclassified as a count.** Word-form anchors were unconditionally tagged `:count`, on the assumption that a spelled-out currency figure would keep a literal `"$"` ("$one billion") — not how publisher prose actually writes it (the realistic form is "one billion dollars"). This meant "one billion dollars" (currency) and "one billion users" (an unrelated count) could wrongly share an anchor. Reproduced against commit `4f623ca` with two genuinely different articles (a funding event stating "one billion dollars" plus a headline-stated "50 percent"; an unrelated user-milestone event stating "one billion users" and separately restating "50 percent") — the pair wrongly merged (`evidence.length` came back `1`, not `2`). **Corrected** by capturing an optional trailing `dollar`/`dollars` suffix in `NUMBER_WORD_PATTERN` and tagging the anchor `:currency` when present, `:count` otherwise — narrow and evidenced (this one common English currency suffix only, no other currency words, no general NLP), and normalizing to the exact same anchor key as the existing numeral currency form. A further compatibility regression confirms "one billion dollars" correctly still shares an anchor with the equivalent numeral form "$1 billion" for a genuine same-event pair.
+
+Both findings were independently reproduced by the orchestrator directly against the real captured Adobe HTML (see the causal diagnostic below) before being accepted as real, and both are covered by new red-before-green zero-network regressions confirmed failing against `4f623ca` for exactly the stated reasons and passing after correction. Full suite after both corrections: **372/372** (368 + 4 new). `node --check src/verification/verifyCompany.mjs` → clean.
+
+### Captured-Adobe causal diagnostic (zero-network, no new fetch)
+
+Using the exact locally captured Adobe publisher HTML from E2 (no network access), the real `extractArticleEvidence` from the pre-E2R1 commit (`69194e1`) and the current corrected code were each run against both articles, with each version's own `collectQuantityAnchors` logic applied identically to compute the pair's duplicate decision:
+
+| | OLD (pre-E2R1, `69194e1`) | CORRECTED (current) |
+| --- | --- | --- |
+| Article 1 title | "Adobe reports solid Q3, tops 1 billion monthly active users" | (same) |
+| Article 1 extracted body length | 1417 | 7592 (same underlying page; nesting-aware extraction reaches more of the surrounding document, but the anchors used for the decision are computed from the first 2,000 characters either way) |
+| Article 1 eventQuantityAnchors | `1:billion:count, 150:percent, 1.83:billion:currency, 6.76:billion:currency, 13:percent, 6.7:billion:currency` | (identical — article 1's page has no nested-tag/word-form issue) |
+| Article 2 title | "Adobe Q3 2026: AI revenue surge and a CEO change signal a new era" | (same) |
+| Article 2 extracted body length | 607 | 2270 |
+| Article 2 eventQuantityAnchors | `0.7:percent, 0.9:percent, 150:percent` | `0.7:percent, 0.9:percent, 150:percent, 6.76:billion:currency, 26.58:billion:currency, 26.63:billion:currency, 1:billion:count` |
+| Shared anchors | `150:percent` (1) | `1:billion:count, 150:percent, 6.76:billion:currency` (3) |
+| Pair duplicate decision | **false** — matches the real original production observation (both signals displayed as `accepted`, not deduped) | **true** — article 2 correctly recognized as duplicate coverage of article 1 |
+
+This confirms, on the exact real captured material, the OLD/CORRECTED behavior pattern requested: OLD leaves both pages as individually-qualifying, non-duplicate evidence; CORRECTED recognizes article 2 as duplicate coverage. The corrected article 2 anchor set includes `1:billion:count` (not `:currency`) for its "one billion monthly active users" mention — confirming Finding 2's fix does not mis-tag this genuine count, only the currency case it was built for. No network request was made to produce this diagnostic; the HTML was already present locally from the original E2 investigation.
 
 ## Remaining limitations
 

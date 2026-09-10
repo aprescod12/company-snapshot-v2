@@ -1360,6 +1360,146 @@ test("E2R1 anti-overdedupe (I): a single shared word-form quantity anchor alone 
   assert.equal(result.evidence.length, 2);
 });
 
+// --- E2R1 corrections: initial-opener exclusion gap + word-form currency/count gap ---
+//
+// Project-owner actual-diff review of commit 4f623ca found two further real
+// gaps in the E2R1 repair, both reproduced and corrected here.
+
+test("E2R1 correction (Finding 1, unit-level): a fake '<article'-shaped string inside a <script> BEFORE the real article must not be selected as the opener or cause overrun into unrelated sibling content", () => {
+  const html = `<!doctype html><html><body>
+<script type="application/json">{"preview":"<article class=\\"ghost\\">"}</script>
+<article><h1>Real story</h1><p>Real article content about the actual event.</p></article>
+<aside><p>Unrelated sibling: a different fact mentions $777 million and 33 percent growth.</p></aside>
+</body></html>`;
+  const evidence = extractArticleEvidence(html);
+  assert.ok(evidence.body.includes("Real article content"), `expected real prose in body, got: ${evidence.body}`);
+  assert.ok(!evidence.body.includes("777 million"), `body must not include unrelated sibling <aside> content, got: ${evidence.body}`);
+});
+
+test("E2R1 correction (Finding 1, pipeline-level): two different real stories must not merge when one page has a fake opener before its real article and an unrelated sibling section restating the other story's own figures", async () => {
+  // The fake opener sits BEFORE the real <article>, inside a <script>. If it
+  // is wrongly selected as the "opening" tag (the exact gap independent
+  // review found in 4f623ca), the scanner never gets to recognize the
+  // script region as skippable, and can overrun past the true </article>
+  // into the sibling <aside> -- picking up figures that happen to match a
+  // genuinely different, unrelated real story.
+  const primary = candidate({
+    rank: 1,
+    title: "Acme launches new billing engine",
+    url: "https://acme.test/news/billing-engine-2",
+    highlights: ["Acme launches new billing engine."],
+  });
+  const unrelated = candidate({
+    rank: 2,
+    title: "Acme rival Globex posts strong quarter",
+    url: "https://financewire.test/globex-quarter-2",
+    highlights: ["Acme rival Globex posts strong quarter."],
+  });
+  const primaryHtml = `<!doctype html><html><head><script type="application/ld+json">${JSON.stringify({ "@type": "NewsArticle", headline: primary.title, datePublished: "2026-09-01" })}</script><title>${primary.title}</title></head><body>
+<script type="application/json">{"preview":"<article class=\\"ghost\\">"}</script>
+<article><h1>${primary.title}</h1><p>Acme launched a new billing engine for enterprise customers, its first major platform release this quarter.</p></article>
+<aside id="related"><p>Unrelated: a separate analyst note pegs the sector at a $500 billion valuation, up 12 percent from last quarter.</p></aside>
+</body></html>`;
+  const result = await verifyCompanyDiscovery(discovery([primary, unrelated]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [primary.url]: primaryHtml,
+      [unrelated.url]: article({
+        title: unrelated.title,
+        body: "Acme rival Globex posted a strong quarter, with the broader sector now valued at $500 billion, up 12 percent from last quarter according to analysts.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("E2R1 correction (Finding 2, pipeline-level, red-before-green): a spelled-out currency amount ('one billion dollars') must not share an anchor with an unrelated plain count ('one billion users')", async () => {
+  // Article A (a funding event) states its headline figure as a spelled-out
+  // CURRENCY amount ("one billion dollars") and a second, headline-stated
+  // percent figure. Article B (a genuinely different, unrelated user-
+  // milestone event) states an unrelated plain COUNT ("one billion users")
+  // and happens to also restate the same percent figure for an unrelated
+  // reason. Under the bug (every word-form anchor tagged :count regardless
+  // of a "dollars" suffix), "one billion" would wrongly register as a
+  // SHARED anchor between the two, and combined with the shared percent
+  // anchor (headline-corroborated on side A), the pair would incorrectly
+  // dedupe. The corrected currency-vs-count tagging must keep them distinct.
+  const funding = candidate({
+    rank: 1,
+    title: "Acme raises one billion dollars in new funding, up 50 percent from last round",
+    url: "https://acme.test/news/funding-round",
+    highlights: ["Acme raises one billion dollars in new funding, up 50 percent from last round."],
+  });
+  const milestone = candidate({
+    rank: 2,
+    title: "Acme surpasses one billion users worldwide",
+    url: "https://financewire.test/acme-user-milestone",
+    highlights: ["Acme surpasses one billion users worldwide."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([funding, milestone]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [funding.url]: article({
+        title: funding.title,
+        body: "Acme raised one billion dollars in its latest funding round, marking a 50 percent increase in valuation versus its previous round.",
+      }),
+      [milestone.url]: article({
+        title: milestone.title,
+        body: "Acme confirmed it has surpassed one billion users worldwide, and separately noted platform engagement grew 50 percent year over year.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // Only "50:percent" remains genuinely shared once "one billion dollars"
+  // (currency) and "one billion users" (count) are correctly kept distinct
+  // -- one anchor, below the 2-anchor minimum, so this must stay distinct.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("E2R1 correction (Finding 2, compatibility): a spelled-out currency amount ('one billion dollars') correctly shares an anchor with the equivalent numeral currency form ('$1 billion')", async () => {
+  // Confirms the corrected word-form currency tagging normalizes to the
+  // SAME anchor key as the existing numeral currency pattern, so a true
+  // same-event pair stated in different forms is still caught.
+  const numeralHeadline = candidate({
+    rank: 1,
+    title: "Acme valued at $1 billion after new funding, up 50 percent from last round",
+    url: "https://acme.test/news/valuation-numeral",
+    highlights: ["Acme valued at $1 billion after new funding, up 50 percent from last round."],
+  });
+  const wordForm = candidate({
+    rank: 2,
+    title: "Acme celebrates new funding milestone",
+    url: "https://financewire.test/acme-funding-milestone",
+    highlights: ["Acme celebrates new funding milestone."],
+  });
+  const observed = await verifyCompanyDiscoveryForSmoke(
+    { state: "ready_for_verification", company: { ...COMPANY, companyName: "Acme", officialDomain: "acme.test" }, prioritized: [numeralHeadline, wordForm] },
+    "test-key",
+    {
+      now: NOW,
+      sourceFetchImpl: sourceMap({
+        [numeralHeadline.url]: article({
+          title: numeralHeadline.title,
+          date: "2026-09-01",
+          body: "Acme was valued at $1 billion after its new funding round, a 50 percent increase from its previous valuation.",
+        }),
+        [wordForm.url]: article({
+          title: wordForm.title,
+          date: "2026-09-02",
+          body: "Acme celebrated a new funding milestone: the company confirmed it raised one billion dollars, marking a 50 percent jump in valuation from its prior round.",
+        }),
+      }),
+      exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+    },
+  );
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.reason), ["accepted", "duplicate"]);
+  assert.equal(observed.result.state, "insufficient_evidence");
+  assert.equal(observed.result.evidence.length, 1);
+});
+
 test("B3R3: pipeline-level regression — real B3 flow accepts multiple valid first-party Notion candidates that say Notion but never Labs", async () => {
   const broad = [
     candidate({ rank: 1, title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/developer-platform", highlights: ["Introducing Notion's Developer Platform."] }),

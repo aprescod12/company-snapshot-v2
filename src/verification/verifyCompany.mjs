@@ -119,24 +119,34 @@ function firstTagText(html, tagName) {
  * sidebar), which the old non-greedy regex could never do (it could only
  * truncate early, never overrun). The scan below skips `<script>`, `<style>`,
  * and HTML comments entirely -- the same regions `textFromHtml` and
- * `strippedDocumentBodyHtml` already exclude elsewhere in this file -- so
- * their content can never be mistaken for a real nested open/close tag.
- * A raw, unescaped `<tagName`-shaped substring inside some other tag's
- * attribute value remains a theoretical residual gap (true HTML parsing
- * would be needed to close it fully); that is a disclosed limitation, not
- * something this bounded fix attempts to solve.
+ * `strippedDocumentBodyHtml` already exclude elsewhere in this file.
+ *
+ * Project-owner actual-diff review of the first corrected version then found
+ * this exclusion was applied too late: the initial opening-tag search ran
+ * BEFORE the token scan began, as its own separate, script/style/comment-
+ * unaware regex, so a fake `<tagName...>`-shaped string sitting inside a
+ * `<script>` block earlier in the document could itself be selected as the
+ * "opening" tag -- after which scanning began past it, so the script region
+ * containing it was never revisited and never recognized as skippable. The
+ * function below is now a single unified pass with no separate initial
+ * search: it treats complete `<script>`/`<style>`/comment regions as atomic
+ * skipped tokens from the very start of the document, and `contentStart` is
+ * only established at the first genuine structural `<tagName>` opening token
+ * found outside those regions -- so a fake match inside a skipped region can
+ * never become the opener, not just never affect the nesting count once
+ * scanning is already underway. A raw, unescaped `<tagName`-shaped substring
+ * inside some other (non-script/style/comment) tag's attribute value remains
+ * a theoretical residual gap (true HTML parsing would be needed to close it
+ * fully); that is a disclosed limitation, not something this bounded fix
+ * attempts to solve.
  */
 function balancedTagBodyHtml(html, tagName) {
-  const openTagPattern = new RegExp(`<${tagName}\\b[^>]*>`, "i");
-  const openMatch = openTagPattern.exec(html);
-  if (!openMatch) return null;
-  const contentStart = openMatch.index + openMatch[0].length;
   const tokenPattern = new RegExp(
     `<script\\b[^>]*>[\\s\\S]*?<\\/script>|<style\\b[^>]*>[\\s\\S]*?<\\/style>|<!--[\\s\\S]*?-->|<${tagName}\\b[^>]*>|<\\/${tagName}\\s*>`,
     "gi",
   );
-  tokenPattern.lastIndex = contentStart;
-  let depth = 1;
+  let depth = 0;
+  let contentStart = -1;
   let match;
   while ((match = tokenPattern.exec(html))) {
     const token = match[0];
@@ -144,13 +154,15 @@ function balancedTagBodyHtml(html, tagName) {
       continue;
     }
     if (token.startsWith("</")) {
+      if (depth === 0) continue; // stray closing tag before any real opening tag
       depth -= 1;
       if (depth === 0) return html.slice(contentStart, match.index);
     } else {
+      if (depth === 0) contentStart = match.index + token.length;
       depth += 1;
     }
   }
-  return html.slice(contentStart);
+  return depth > 0 ? html.slice(contentStart) : null;
 }
 
 function preferredArticleBodyHtml(html) {
@@ -396,15 +408,25 @@ const QUANTITY_ANCHOR_SCAN_CHAR_LIMIT = 2_000;
  * number parsing (no compounds, no "hundred"/"a quarter"/decimals-in-words),
  * just the same normalization principle already applied to numerals,
  * extended to the small set of word forms actually seen stating such
- * figures. Word-form anchors are tagged `:count` only (a currency amount
- * spelled out as "$one billion" is not a realistic publisher convention);
- * this cannot cause a spurious match against a currency-tagged numeral
- * anchor of the same value, so it can only ever add detection, never merge
- * a currency figure with an unrelated count. The pattern requires the
- * number word not be preceded by a word character or hyphen, so a genuine
- * compound word like "twenty-one billion" is correctly excluded rather than
- * silently misread as "one billion" (value 1) -- independent review found
- * this exact gap in the first version and it is corrected here.
+ * figures. The pattern requires the number word not be preceded by a word
+ * character or hyphen, so a genuine compound word like "twenty-one billion"
+ * is correctly excluded rather than silently misread as "one billion"
+ * (value 1) -- independent review found this exact gap in the first version
+ * and it is corrected here.
+ *
+ * Project-owner actual-diff review then found a second gap: tagging every
+ * word-form anchor `:count` assumed a spelled-out currency figure would
+ * always keep a literal "$" ("$one billion"), which is not how publisher
+ * prose actually writes it -- the realistic form is "one billion dollars".
+ * Without recognizing that, "one billion dollars" (a currency amount) and
+ * "one billion users" (an unrelated count) would wrongly share the same
+ * `:count`-tagged anchor. An optional trailing "dollar"/"dollars" is now
+ * captured and, when present, tags the anchor `:currency` instead -- kept
+ * narrow and evidenced (this one common English currency suffix only, no
+ * other currency words, no general NLP) -- and normalizes to the exact same
+ * anchor key as the existing numeral currency form, so "one billion dollars"
+ * and "$1 billion" correctly share an anchor while "one billion users" does
+ * not.
  */
 const NUMBER_WORDS = Object.freeze({
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
@@ -412,7 +434,7 @@ const NUMBER_WORDS = Object.freeze({
   eighteen: 18, nineteen: 19, twenty: 20,
 });
 const NUMBER_WORD_PATTERN = new RegExp(
-  `(?<![\\w-])(${Object.keys(NUMBER_WORDS).join("|")})\\s+(percent|million|billion|thousand)\\b`,
+  `(?<![\\w-])(${Object.keys(NUMBER_WORDS).join("|")})\\s+(percent|million|billion|thousand)(\\s+dollars?)?\\b`,
   "gi",
 );
 
@@ -437,7 +459,8 @@ function collectQuantityAnchors(text) {
       anchors.add(`${numeric}:percent`);
       continue;
     }
-    anchors.add(`${numeric}:${unitWord}:count`);
+    const scale = match[3] ? "currency" : "count";
+    anchors.add(`${numeric}:${unitWord}:${scale}`);
   }
   return anchors;
 }
