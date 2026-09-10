@@ -750,6 +750,23 @@ The project owner subsequently approved **`B3 PRODUCTION EVIDENCE VERIFICATION �
 
 B4A accepts a future grounded description as an input only; generating that description is separately authorized future work as B4B, which has not begun. Endpoint/UI integration (B5) and Phase C have not begun. The noisy NVIDIA evidence-snippet issue recorded above remains an upstream known limitation; B4A does not expose `evidenceSnippet` and made no production-code change to address it.
 
+### B4B Stage A — isolated Exa Contents description candidate (unapproved)
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | `src/description/exaCompanyDescription.mjs` accepts an already-confirmed `{ companyName, officialDomain }` and makes one Exa **Contents** request (never Search) against the exact HTTPS root homepage, requesting `summary` only. It does not import or invoke B1, B2, B3, or B4A; those source files are unmodified. |
+| Request shape | `buildContentsRequestBody` sends exactly `{ urls: [homepage], summary: { query } }` — no `text`, `highlights`, `subpages`, `livecrawl`, or Search fields. `buildHomepageUrl` accepts only a bare confirmed hostname and rejects one carrying a path, query, or credentials. |
+| Instruction | `buildDescriptionQuery` asks for exactly 2–3 factual sentences on the stable core business, principal products/services, and principal use case, grounded only in the supplied page, and explicitly excludes recent announcements, funding, acquisitions, partnerships, earnings, leadership changes, stock performance, and promotional language. |
+| Acceptance | Requires per-URL Contents `status: "success"` **with `statuses[0].id` and `results[0].id` both exactly equal to the requested homepage URL** (array cardinality alone does not prove provider-response association), a non-empty summary, exactly 2–3 sentences (`Intl.Segmenter` sentence granularity, not `split(".")`), a bounded maximum length, no embedded HTTP(S) URL, and a `result.url` on the confirmed official domain or a subdomain (suffix-safe hostname comparison) — `result.url` need not equal the requested homepage and may be a legitimate same-domain canonical/redirected page; an unrelated/redirected domain is never silently accepted. |
+| Failure handling | Any acceptance check failing returns `{ state: "description_unavailable", reason }` from a small fixed reason vocabulary — never a thrown error. Only a genuine contract-shape violation (missing/malformed `statuses`/`results`, or a `statuses[].id`/`results[].id` that does not match the exact requested homepage) throws `CompanyDescriptionError` with `code: "provider_format"`; auth/payment-required/quota/unavailable/timeout conditions classify the same way B2's discovery error boundary already does, with no retry. |
+| Focused tests | `node --test test/exa-company-description.test.mjs` — 30/30 passed (includes matching-ID acceptance, mismatched/missing/malformed `status.id`/`result.id` rejection, and a matching-ID case with a same-domain canonical `result.url` still passing while an off-domain canonical `result.url` still fails the existing domain gate). `node --test test/phase-b4b-live-smoke.test.mjs` — 7/7 passed (harness restriction to the two fixed cases, confirmation-flag/key gating, single-call contract, no-retry, sanitized output, no B1/B2/B3 import). |
+| Full zero-network suite | `node --test test/*.test.mjs` — 213/213 passed (176 pre-existing + 30 + 7 new). |
+| Syntax / diff checks | `node --check` on `src/description/exaCompanyDescription.mjs`, `scripts/phase-b4b-live-smoke.mjs`, and both new test files; `git diff --check` passed. |
+| Provider accounting | Stage A Exa Search requests: 0; Exa Contents requests: 0; other network requests: 0. Cumulative Exa Search requests remain 22 (unchanged); Contents requests are tracked separately from Search and remain 0. |
+| Protected-path audit | `git diff --name-only` confirmed no file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, or `src/snapshot/` was modified. |
+
+B4B is an isolated, unapproved production candidate: it does not extend B2's `outputSchema` and does not touch the approved Search/identity/signal-retrieval path. The future live gate (`scripts/phase-b4b-live-smoke.mjs`) is restricted to two fixed already-confirmed cases (`NVIDIA` → `nvidia.com`; `stripe.com` → `stripe.com`), requires an explicit free-Starter confirmation flag, makes exactly one Contents request per invocation with no retry, and **was not executed** in Stage A. Live description validation has not happened. Endpoint/UI integration (B5) and Phase C have not begun.
+
 ## Phase C
 _Not yet run._
 
