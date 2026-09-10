@@ -824,7 +824,22 @@ No B1–B4B or B5 production file changed as part of this first attempt. No seco
 | Full zero-network suite (after correction) | `node --test test/*.test.mjs` — 243/243 passed (224 pre-existing + 19). |
 | Outcome | **`B5 INTEGRATED LIVE GATE — NOT PASSED (B4B DESCRIPTION REJECTED; UNDERLYING REASON UNKNOWN DUE TO A HARNESS DIAGNOSTIC GAP, NOW FIXED)`** |
 
-B1–B3 integration through the real B5 orchestration was observed to work correctly: identity resolution, evidence verification, provider budget, and no retry all behaved as designed. B5's error-mapping was also correct — a normal B4B content-quality rejection was mapped to the public `unavailable`/`description_unavailable` contract with no leaked diagnostics. The gate did not pass only because B4B rejected the description, for a reason this specific run cannot identify; that reason is recorded as unknown, not guessed. No conclusion is drawn that B5's orchestration logic is broken. No second network-backed NVIDIA execution occurred; no production `src/` file changed. A further live attempt, to observe the actual rejection reason under the corrected harness, requires fresh project-owner authorization. See `docs/PHASE_B5_LIVE_GATE.md` and `docs/AI_FAILURE_LOG.md`. Broader Phase B validation, Phase C, endpoint/UI, and deployment remain unstarted.
+B1–B3 integration through the real B5 orchestration was observed to work correctly: identity resolution, evidence verification, provider budget, and no retry all behaved as designed. B5's error-mapping was also correct — a normal B4B content-quality rejection was mapped to the public `unavailable`/`description_unavailable` contract with no leaked diagnostics. The gate did not pass only because B4B rejected the description, for a reason this specific run cannot identify; that reason is recorded as unknown, not guessed. No conclusion is drawn that B5's orchestration logic is broken. As of this record no second network-backed NVIDIA execution had occurred; no production `src/` file changed. A further live attempt, to observe the actual rejection reason under the corrected harness, required fresh project-owner authorization. See `docs/PHASE_B5_LIVE_GATE.md` and `docs/AI_FAILURE_LOG.md`. (That further attempt is recorded below.)
+
+### B5 — second network-backed execution (passed)
+
+| Measure | Observed result |
+| --- | --- |
+| CLI command | `node --env-file=.env scripts/phase-b5-live-smoke.mjs b5-live-smoke --company NVIDIA --confirmed-free-starter` — run exactly once, with the corrected (reason-preserving) harness. |
+| Resolved identity | `NVIDIA Corporation` / `nvidia.com` |
+| B3 result | `verified`; evidence count 3; fallback used: `false`; broad Search: 1; publisher requests: 6 |
+| B4B result | `state: "described"`; `sourceUrl: "https://nvidia.com/"`; provider latency 1870 ms; estimated cost $0.001 |
+| Final B5 result | `state: "snapshot"`; company `NVIDIA Corporation` / `nvidia.com`; 3 signals matching the 3 verified evidence records (2 `FIRST_PARTY` `blogs.nvidia.com`, 1 `OTHER` `globenewswire.com`, all `RECENT`) |
+| Total latency | 5533 ms |
+| Provider accounting | Exa Search made: 1; Exa Contents made: 1; publisher requests: 6; retries: 0. Cumulative Exa Search: 23 → 24. Cumulative Exa Contents: 3 → 4. |
+| Outcome | **`B5 INTEGRATED LIVE GATE — PASSED FOR ONE KNOWN-GOOD COMPANY (NVIDIA)`** |
+
+The full B1→B4A path succeeded end-to-end within the frozen provider budget, confirming the integrated path can succeed for the one authorized case. It does not establish broad reliability across arbitrary companies, and it does not retroactively explain the prior attempt's `description_unavailable` rejection — that reason remains permanently unknown; ordinary content-quality variability across two separate live Contents calls to the same page is a plausible but unconfirmed explanation. No second NVIDIA execution occurred after this one; no other company was run; no production `src/` file changed. See `docs/PHASE_B5_LIVE_GATE.md`. Broader Phase B validation (additional/edge-case companies), Phase C, endpoint/UI, and deployment remain unstarted.
 
 ## Phase C
 _Not yet run._
