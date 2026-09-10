@@ -649,6 +649,19 @@ No retry, fallback, source verification, candidate-page opening, implementation 
 
 No B3 live validation, source-page smoke, synthesis, endpoint, UI, deployment, B4, or later-phase work occurred. B3 implementation is pending project-owner/ChatGPT review and is not production-approved.
 
+### B3 live-gate preflight
+
+| Measure | Observed result |
+| --- | --- |
+| Harness | `scripts/phase-b3-live-smoke.mjs` invokes the production `discoverCompany(...)` then `verifyCompanyDiscovery(...)` path once, only for `NVIDIA` or `Stripe`, with explicit Free Starter confirmation and no retry, persistence, raw-response dump, or publisher-page request outside B3 itself. |
+| Zero-network harness tests | 7/7 passed: exact allowlist/preflight, actual B2→B3 broad-only path, conditional fallback ceiling, no retry, B2 clarification stop, output redaction, and no persistence. |
+| Regression checks | B3 verification 16/16; B1/B2/selector 53/53; full suite 154/154; syntax and `git diff --check` passed. |
+| Credential preflight | `EXA_API_KEY` was unavailable to the process. Its contents and the existing ignored `.env` were not inspected. |
+| Provider/publisher activity | NVIDIA Exa 0; Stripe Exa 0; publisher GETs 0; retries 0. |
+| Accounting / outcome | Starting cumulative Exa 14; B3 gate Exa 0; ending cumulative Exa 14. `B3 LIVE GATE PRE-FLIGHT BLOCKED — CREDENTIAL/ENVIRONMENT UNAVAILABLE`. |
+
+No NVIDIA or Stripe live case was run. No provider response, authorization header, source body, candidate output, or temporary artifact was persisted. B3 remains pending a separately completed live gate and project-owner source review; B4 and later work remain unstarted.
+
 ## Phase C
 _Not yet run._
 

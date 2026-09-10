@@ -472,6 +472,8 @@ Verification-time dedupe rejects identical source/final URLs and reuses the sele
 
 Focused local fixtures passed 16/16 and the full zero-network suite passed 147/147. B3 implementation and correction made 0 Exa requests and 0 live publisher requests; cumulative Exa experimental requests remain 14. No synthesis, endpoint, UI, deployment, B4, or later work began. B3 live validation and project-owner approval remain pending.
 
+The subsequently authorized B3 live gate added a thin production-path smoke harness for exactly `NVIDIA` or `Stripe`, with explicit Free Starter confirmation, one B2 discovery invocation, and one B3 verification invocation. Its zero-network harness suite passed 7/7, relevant B1/B2/selector regressions passed 53/53, B3 verification passed 16/16, and the full suite passed 154/154. Before any live invocation, `EXA_API_KEY` was unavailable to the process; the harness therefore stopped at credential/environment preflight without reading the ignored `.env`, making an Exa request, or fetching a publisher page. NVIDIA and Stripe were not run, retries remain 0, and cumulative Exa experimental requests remain 14. The factual status is **`B3 LIVE GATE PRE-FLIGHT BLOCKED — CREDENTIAL/ENVIRONMENT UNAVAILABLE`**. B3 remains unapproved pending a separately completed live gate and project-owner source review.
+
 ## Phase C — Frontend
 Build the required one-page experience:
 - input;
