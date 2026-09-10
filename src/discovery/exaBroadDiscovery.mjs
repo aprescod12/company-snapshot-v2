@@ -102,6 +102,18 @@ export function buildBroadRequestBody(targetValue, now = new Date(), { includeDo
   return body;
 }
 
+export function buildRawDiscoveryRequestBody(targetValue, now = new Date(), { includeDomains } = {}) {
+  const body = {
+    query: buildBroadQuery(targetValue, now),
+    type: EXA_SEARCH_TYPE,
+    numResults: EXA_RESULT_LIMIT,
+    contents: { highlights: true },
+    stream: false,
+  };
+  if (includeDomains !== undefined) body.includeDomains = includeDomains;
+  return body;
+}
+
 export function extractIdentityEvidenceUrls(grounding, field) {
   if (!Array.isArray(grounding)) return [];
   const urls = [];
@@ -172,6 +184,20 @@ export function parseBroadDiscoveryPayload(payload, latencyMs = 0) {
   };
 }
 
+export function parseRawDiscoveryPayload(payload, latencyMs = 0) {
+  if (!isPlainObject(payload)) throw providerFormat("provider response was not an object.");
+  if (!Array.isArray(payload.results)) throw providerFormat("provider results were absent.");
+  const estimatedCostUsd = payload?.costDollars?.total;
+  return {
+    candidates: payload.results.map(parseCandidate),
+    latencyMs,
+    estimatedCostUsd:
+      typeof estimatedCostUsd === "number" && Number.isFinite(estimatedCostUsd)
+        ? estimatedCostUsd
+        : null,
+  };
+}
+
 function classifyHttpFailure(status, tag) {
   if (status === 401 || status === 403 || tag === "INVALID_API_KEY") return "provider_auth";
   if (status === 402 || ["NO_MORE_CREDITS", "API_KEY_BUDGET_EXCEEDED", "TEAM_BUDGET_EXCEEDED"].includes(tag)) {
@@ -182,11 +208,7 @@ function classifyHttpFailure(status, tag) {
   return "provider_format";
 }
 
-export async function requestExaBroadDiscovery(
-  targetValue,
-  apiKey,
-  { fetchImpl = fetch, now = new Date(), timeoutMs = DEFAULT_TIMEOUT_MS, includeDomains } = {},
-) {
+async function requestExaPayload(body, apiKey, { fetchImpl = fetch, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
   if (typeof apiKey !== "string" || apiKey.length === 0) {
     throw new BroadDiscoveryError("provider_auth", "EXA_API_KEY is not set.");
   }
@@ -204,7 +226,7 @@ export async function requestExaBroadDiscovery(
     response = await fetchImpl(EXA_SEARCH_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-      body: JSON.stringify(buildBroadRequestBody(targetValue, now, { includeDomains })),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
     try {
@@ -235,28 +257,45 @@ export async function requestExaBroadDiscovery(
     );
   }
 
+  return { payload, latencyMs };
+}
+
+export async function requestExaBroadDiscovery(
+  targetValue,
+  apiKey,
+  { fetchImpl = fetch, now = new Date(), timeoutMs = DEFAULT_TIMEOUT_MS, includeDomains } = {},
+) {
+  const { payload, latencyMs } = await requestExaPayload(
+    buildBroadRequestBody(targetValue, now, { includeDomains }),
+    apiKey,
+    { fetchImpl, timeoutMs },
+  );
   return parseBroadDiscoveryPayload(payload, latencyMs);
 }
 
 /**
- * Make the sole optional B3 fallback Search. It reuses the frozen B2 parser and
- * request behavior, adding only A4.5's official-domain constraint.
+ * Make the sole optional B3 fallback Search using A4.5's raw role, which does
+ * not request or parse B2's synthesized identity output.
  */
 export async function requestOfficialDomainFallback(
+  companyName,
   officialDomain,
   apiKey,
   { fetchImpl = fetch, now = new Date(), timeoutMs = DEFAULT_TIMEOUT_MS } = {},
 ) {
+  if (typeof companyName !== "string" || companyName.trim().length === 0) {
+    throw new TypeError("companyName must be a non-empty string.");
+  }
   if (typeof officialDomain !== "string" || officialDomain.trim().length === 0) {
     throw new TypeError("officialDomain must be a non-empty hostname.");
   }
   const domain = officialDomain.trim().toLowerCase();
-  return requestExaBroadDiscovery(domain, apiKey, {
-    fetchImpl,
-    now,
-    timeoutMs,
-    includeDomains: [domain, `*.${domain}`],
-  });
+  const { payload, latencyMs } = await requestExaPayload(
+    buildRawDiscoveryRequestBody(companyName, now, { includeDomains: [domain, `*.${domain}`] }),
+    apiKey,
+    { fetchImpl, timeoutMs },
+  );
+  return parseRawDiscoveryPayload(payload, latencyMs);
 }
 
 export function candidateAggregates(candidates) {

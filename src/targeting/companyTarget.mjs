@@ -10,7 +10,8 @@ export const TARGET_STATUS = Object.freeze({
 });
 
 const HTTP_PROTOCOLS = new Set(["http:", "https:"]);
-const NAME_SUFFIXES = new Set(["co", "company", "corp", "corporation", "inc", "ltd", "llc", "plc"]);
+export const LEGAL_NAME_SUFFIXES = Object.freeze(["co", "company", "corp", "corporation", "inc", "ltd", "llc", "plc"]);
+const NAME_SUFFIXES = new Set(LEGAL_NAME_SUFFIXES);
 
 function clarification(reason) {
   return { status: TARGET_STATUS.CLARIFICATION_NEEDED, reason };

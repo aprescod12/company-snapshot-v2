@@ -44,17 +44,8 @@ function discovery(prioritized) {
   return { state: "ready_for_verification", company: COMPANY, prioritized };
 }
 
-function fallbackPayload(candidates) {
-  return {
-    results: candidates,
-    output: {
-      content: { resolvedCompanyName: "Acme", officialDomain: "acme.test", ambiguous: false },
-      grounding: [
-        { field: "resolvedCompanyName", citations: [{ url: "https://acme.test/about", title: "About" }], confidence: "high" },
-        { field: "officialDomain", citations: [{ url: "https://acme.test/about", title: "About" }], confidence: "high" },
-      ],
-    },
-  };
+function rawFallbackPayload(candidates) {
+  return { results: candidates };
 }
 
 test("source fetch accepts exact HTML and follows a bounded redirect", async () => {
@@ -103,6 +94,28 @@ test("source fetch fail-closes redirect overflow, status failures, timeout, over
     fetchImpl: async () => response("", { status: 302, headers: { location: "http://[::1]/internal" } }),
   });
   assert.equal(redirectToIpv6.reason, "inaccessible");
+});
+
+test("source fetch deadline includes a body that stalls after response headers", async () => {
+  let signalSeen = false;
+  const startedAt = performance.now();
+  const result = await fetchHtmlSource("https://publisher.test/article", {
+    timeoutMs: 10,
+    fetchImpl: async (_url, { signal }) => {
+      const body = new ReadableStream({
+        start(controller) {
+          signal.addEventListener("abort", () => {
+            signalSeen = true;
+            controller.error(new DOMException("Aborted", "AbortError"));
+          }, { once: true });
+        },
+      });
+      return new Response(body, { headers: { "content-type": "text/html" } });
+    },
+  });
+  assert.equal(result.reason, "inaccessible");
+  assert.equal(signalSeen, true);
+  assert.ok(performance.now() - startedAt < 500);
 });
 
 test("source URLs reject credentials and local/private literal targets", () => {
@@ -168,6 +181,33 @@ test("verification accepts recent and 91-to-180 day source evidence but rejects 
     fetchImpl: async () => response(article({ title: "Acme fixes Atlas bug", body: "Acme fixes Atlas bug in a routine bug fix for a small code patch and release notes entry." })),
   });
   assert.equal(trivial.reason, "trivial");
+});
+
+test("verification ignores approved legal suffixes but still requires exact company tokens", async () => {
+  const nvidia = await verifyCandidate(candidate({ title: "NVIDIA launches Atlas platform" }), {
+    ...COMPANY,
+    companyName: "NVIDIA Corporation",
+  }, {
+    now: NOW,
+    fetchImpl: async () => response(article({ title: "NVIDIA launches Atlas platform", body: "NVIDIA launches Atlas platform with a substantial new company capability for enterprise customers." })),
+  });
+  assert.equal(nvidia.accepted, true);
+  const stripe = await verifyCandidate(candidate({ title: "Stripe expands Atlas payments" }), {
+    ...COMPANY,
+    companyName: "Stripe, Inc.",
+  }, {
+    now: NOW,
+    fetchImpl: async () => response(article({ title: "Stripe expands Atlas payments", body: "Stripe expands Atlas payments with a substantial new company capability for enterprise customers." })),
+  });
+  assert.equal(stripe.accepted, true);
+  const unrelated = await verifyCandidate(candidate({ title: "Atlas launches platform" }), {
+    ...COMPANY,
+    companyName: "NVIDIA Corporation",
+  }, {
+    now: NOW,
+    fetchImpl: async () => response(article({ title: "Atlas launches platform", body: "Atlas launches platform with a substantial new company capability for enterprise customers." })),
+  });
+  assert.equal(unrelated.reason, "unsupported_claim");
 });
 
 test("generic homes, evergreen/how-to pages, and stock commentary cannot qualify", async () => {
@@ -238,14 +278,21 @@ test("B3 exhausts broad candidates, uses one exact-domain fallback, and fills on
     }, sourceCalls),
     exaFetchImpl: async (url, request) => {
       exaCalls.push([url, request]);
-      return { ok: true, status: 200, json: async () => fallbackPayload([fallback]) };
+      return { ok: true, status: 200, json: async () => rawFallbackPayload([fallback]) };
     },
   });
   assert.equal(result.state, "verified");
   assert.equal(result.evidence.length, 3);
   assert.equal(exaCalls.length, 1);
   const body = JSON.parse(exaCalls[0][1].body);
+  assert.equal(body.type, "auto");
+  assert.equal(body.numResults, 10);
+  assert.deepEqual(body.contents, { highlights: true });
+  assert.equal(body.stream, false);
   assert.deepEqual(body.includeDomains, ["acme.test", "*.acme.test"]);
+  assert.match(body.query, /Acme/);
+  assert.doesNotMatch(body.query, /acme\.test/);
+  assert.equal("outputSchema" in body, false);
   assert.deepEqual(result.retrieval, { fallbackUsed: true, exaRequestCount: 2 });
   assert.equal(sourceCalls.includes("https://publisher.test/stale"), true);
 });
@@ -264,7 +311,7 @@ test("one verified broad candidate may use the sole fallback to fill two remaini
     }),
     exaFetchImpl: async () => {
       exaCalls += 1;
-      return { ok: true, status: 200, json: async () => fallbackPayload([first, second]) };
+      return { ok: true, status: 200, json: async () => rawFallbackPayload([first, second]) };
     },
   });
   assert.equal(result.state, "verified");
@@ -281,7 +328,7 @@ test("fallback duplicate evidence is rejected and exhausted evidence returns ins
       "https://acme.test/fx": article({ title: broad[0].title, body: "Acme launches FX payments as a substantial new platform capability for enterprise customers." }),
       "https://publisher.test/fx": article({ title: duplicate.title, body: "Acme launches FX payments as a substantial new platform capability for enterprise customers." }),
     }),
-    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => fallbackPayload([duplicate]) }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([duplicate]) }),
   });
   assert.equal(result.state, "insufficient_evidence");
   assert.equal(result.evidence.length, 1);
@@ -306,10 +353,20 @@ test("evidence-aware lexical dedupe rejects Sessions umbrella and component cove
       "https://stripe.test/sessions": article({ title: broad[0].title, body: "Stripe Sessions 2026 launches agent payments as a substantial broader platform event for customers." }),
       "https://stripe.test/link": article({ title: component.title, body: "Stripe Sessions 2026 launches agent payments component as part of the same substantial broader platform event." }),
     }),
-    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => fallbackPayload([component]) }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([component]) }),
   });
   assert.equal(result.state, "insufficient_evidence");
   assert.equal(result.evidence.length, 1);
+});
+
+test("B3 propagates a fallback provider failure instead of misclassifying it as insufficient evidence", async () => {
+  await assert.rejects(
+    () => verifyCompanyDiscovery(discovery([]), "test-key", {
+      now: NOW,
+      exaFetchImpl: async () => ({ ok: false, status: 429, json: async () => ({ tag: "RATE_LIMIT_EXCEEDED" }) }),
+    }),
+    (error) => error?.code === "provider_quota",
+  );
 });
 
 test("B3 has no historical-script dependency and rejects non-ready B2 input before network", async () => {

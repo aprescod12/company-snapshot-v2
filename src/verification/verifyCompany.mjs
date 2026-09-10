@@ -1,5 +1,6 @@
 import { requestOfficialDomainFallback } from "../discovery/exaBroadDiscovery.mjs";
 import { areDuplicateCandidates, classifyRecency, classifySource, selectSignals } from "../selection/selectSignals.mjs";
+import { LEGAL_NAME_SUFFIXES } from "../targeting/companyTarget.mjs";
 import { fetchHtmlSource } from "./sourceFetch.mjs";
 
 const ARTICLE_TYPES = new Set(["article", "newsarticle", "blogposting", "report"]);
@@ -156,7 +157,8 @@ function tokens(value) {
 }
 
 function matchesCompany(text, companyName) {
-  const companyTokens = tokens(companyName);
+  const legalSuffixes = new Set(LEGAL_NAME_SUFFIXES);
+  const companyTokens = tokens(companyName).filter((token) => !legalSuffixes.has(token));
   const textTokens = new Set(tokens(text));
   return companyTokens.length > 0 && companyTokens.every((token) => textTokens.has(token));
 }
@@ -286,12 +288,10 @@ export async function verifyCompanyDiscovery(
     throw new TypeError("apiKey is required when B3 fallback is needed.");
   }
 
-  let fallback;
-  try {
-    fallback = await requestOfficialDomainFallback(company.officialDomain, apiKey, { fetchImpl: exaFetchImpl, now });
-  } catch {
-    return resultFor(company, accepted, true);
-  }
+  const fallback = await requestOfficialDomainFallback(company.companyName, company.officialDomain, apiKey, {
+    fetchImpl: exaFetchImpl,
+    now,
+  });
   const prioritized = selectSignals(fallback.candidates, { ...company, now }).prioritized;
   await verifyQueue(prioritized, company, accepted, verificationOptions);
   return resultFor(company, accepted, true);

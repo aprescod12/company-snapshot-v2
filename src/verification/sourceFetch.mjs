@@ -104,51 +104,53 @@ export async function fetchHtmlSource(
   let current = parseSafeSourceUrl(sourceUrl);
   if (!current) return { ok: false, reason: "inaccessible" };
 
-  for (let redirects = 0; ; redirects += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    let response;
-    try {
-      response = await fetchImpl(current.href, {
-        method: "GET",
-        redirect: "manual",
-        signal: controller.signal,
-        headers: { Accept: "text/html,application/xhtml+xml" },
-      });
-    } catch {
-      return { ok: false, reason: "inaccessible" };
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    if (response.status >= 300 && response.status < 400) {
-      if (redirects >= maxRedirects) return { ok: false, reason: "inaccessible" };
-      const location = header(response, "location");
-      let next;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    for (let redirects = 0; ; redirects += 1) {
+      let response;
       try {
-        next = new URL(location, current);
+        response = await fetchImpl(current.href, {
+          method: "GET",
+          redirect: "manual",
+          signal: controller.signal,
+          headers: { Accept: "text/html,application/xhtml+xml" },
+        });
       } catch {
         return { ok: false, reason: "inaccessible" };
       }
-      current = parseSafeSourceUrl(next.href);
-      if (!current) return { ok: false, reason: "inaccessible" };
-      continue;
-    }
 
-    if (!response.ok || response.status === 403 || response.status === 429) {
-      return { ok: false, reason: "inaccessible" };
+      if (response.status >= 300 && response.status < 400) {
+        if (redirects >= maxRedirects) return { ok: false, reason: "inaccessible" };
+        const location = header(response, "location");
+        let next;
+        try {
+          next = new URL(location, current);
+        } catch {
+          return { ok: false, reason: "inaccessible" };
+        }
+        current = parseSafeSourceUrl(next.href);
+        if (!current) return { ok: false, reason: "inaccessible" };
+        continue;
+      }
+
+      if (!response.ok || response.status === 403 || response.status === 429) {
+        return { ok: false, reason: "inaccessible" };
+      }
+      const contentType = String(header(response, "content-type")).toLowerCase();
+      if (!/^(?:text\/html|application\/xhtml\+xml)(?:;|$)/.test(contentType)) {
+        return { ok: false, reason: "unsupported_source_type" };
+      }
+      try {
+        const body = await readBoundedBody(response, maxBodyBytes);
+        if (body.tooLarge) return { ok: false, reason: "inaccessible" };
+        if (isChallengePage(body.text)) return { ok: false, reason: "inaccessible" };
+        return { ok: true, sourceUrl, resolvedUrl: current.href, html: body.text };
+      } catch {
+        return { ok: false, reason: "inaccessible" };
+      }
     }
-    const contentType = String(header(response, "content-type")).toLowerCase();
-    if (!/^(?:text\/html|application\/xhtml\+xml)(?:;|$)/.test(contentType)) {
-      return { ok: false, reason: "unsupported_source_type" };
-    }
-    try {
-      const body = await readBoundedBody(response, maxBodyBytes);
-      if (body.tooLarge) return { ok: false, reason: "inaccessible" };
-      if (isChallengePage(body.text)) return { ok: false, reason: "inaccessible" };
-      return { ok: true, sourceUrl, resolvedUrl: current.href, html: body.text };
-    } catch {
-      return { ok: false, reason: "inaccessible" };
-    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
