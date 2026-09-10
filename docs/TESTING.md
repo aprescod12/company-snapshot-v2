@@ -767,6 +767,17 @@ B4A accepts a future grounded description as an input only; generating that desc
 
 B4B is an isolated, unapproved production candidate: it does not extend B2's `outputSchema` and does not touch the approved Search/identity/signal-retrieval path. The future live gate (`scripts/phase-b4b-live-smoke.mjs`) is restricted to two fixed already-confirmed cases (`NVIDIA` → `nvidia.com`; `stripe.com` → `stripe.com`), requires an explicit free-Starter confirmation flag, makes exactly one Contents request per invocation with no retry, and **was not executed** in Stage A. Live description validation has not happened. Endpoint/UI integration (B5) and Phase C have not begun.
 
+### B4B — owner-run live gate (approved)
+
+| Measure | Observed result |
+| --- | --- |
+| NVIDIA | Submitted `NVIDIA` → resolved `NVIDIA Corporation` / `nvidia.com`. One Contents request, no retry. `state: "described"`; `sourceUrl: "https://nvidia.com/"`; exactly three sentences; provider latency 2783 ms; estimated cost $0.001. Manual review against current official NVIDIA materials passed: factual accuracy, stable core-business focus, sentence-count compliance, clarity, no recent-news contamination, official-domain grounding, no unsupported specificity. |
+| Stripe | Submitted `stripe.com` → resolved `Stripe` / `stripe.com`. One Contents request, no retry. `state: "described"`; `sourceUrl: "https://stripe.com/"`; exactly three sentences; provider latency 2115 ms; estimated cost $0.001. Same manual-review checks passed. |
+| Provider accounting | B4B Contents requests: 2; B4B Search requests: 0; retries: 0. Cumulative Exa Search accounting remains 22 (unchanged, tracked separately from Contents). |
+| Scope of evidence | Two owner-authorized cases only; this does not establish universal reliability across arbitrary companies. Broader end-to-end coverage — smaller, private, ambiguous, or low-activity companies — remains a later validation concern and has not been run. |
+
+The project owner approved **`B4B ISOLATED GROUNDED COMPANY DESCRIPTION — APPROVED`** on this basis. No B4B prompt, request shape, validation logic, retry policy, or B1–B4A behavior changed as part of this approval. Endpoint/UI integration (B5) and Phase C remain unstarted.
+
 ## Phase C
 _Not yet run._
 
