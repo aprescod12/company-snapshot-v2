@@ -1000,7 +1000,48 @@ Result: **`C2 IMPLEMENTED LOCALLY AND ZERO-NETWORK TESTED`**, and was subsequent
 Result: **`C3 IMPLEMENTED LOCALLY AND ZERO-NETWORK TESTED`**. It is not deployment validation, production endpoint validation, live provider validation, a push, or formal C3 approval. Manual browser validation of the harness output remains owner-side.
 
 ## Phase D / production
-_Not yet run._
+
+### D1 — production deployment + bounded live smoke
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | Deployed the exact approved commit `8f2d13ceb0e9ddbf13b6750f7163faf78ad6ca78` to Vercel production; no source/config file changed. |
+| Deployment method | Vercel CLI (`npx vercel@latest`), deployed from a clean disposable `git worktree` checked out at the exact approved SHA — guaranteeing no untracked artifact (`.claude/`, review `.patch` files, `.env`) could reach the deployment. The Vercel MCP integration returned zero teams for this account and was abandoned in favor of CLI per owner instruction. |
+| Configuration | Zero-config auto-detection: no framework, `public` as static output directory, one function built at `api/snapshot` (27.17KB). No `vercel.json`, no build command, no dependency added. |
+| Production URL | `https://company-snapshot-v2.vercel.app` (project `amiri-prescods-projects/company-snapshot-v2`) |
+| `EXA_API_KEY` | Added as a Production-only Secret by piping directly from the local `.env` file into `vercel env add --sensitive`; value never printed, logged, or exposed client-side; confirmed via `vercel env ls` (Production/Secret/Hidden). |
+| Static/HTTP preflight | Homepage/`app.js`/`styles.css` all correct status/content-type; malformed JSON, blank input, missing-field POSTs all returned sanitized `400`/`clarification_needed`/`invalid_input`; `GET /api/snapshot` returned `405`/`Allow: POST`; `/scripts/`, `/src/`, `/.env` all returned `404`. |
+| Live submission 1 | `NVIDIA` (name) → `clarification_needed`/`company_ambiguous`, HTTP 200, 4.29s, no retry. |
+| Live submission 2 | `stripe.com` (domain) → `unavailable`/`provider_unavailable`, HTTP 200, 0.28s, no retry. |
+| Classification | Both are valid, documented B5 public-contract states returned via HTTP 200 (not the distinct HTTP 503 missing-configuration path); Vercel runtime logs showed a single clean `info`-level line each, no platform-level error. Two independent sub-agent reviews (deployment/security; live-result classification) each concluded these are safe application/provider outcomes, not deployment defects. |
+| Sub-agents | Deployment/security reviewer (PASS on all 5 checked items: no secret leakage, no C3-harness reachability, minimal correct config, zero repo changes); live-smoke-result reviewer (both results classified as safe outcomes, not deployment failures). |
+| Provider/deployment activity | 1–2 additional Exa Search (1 confirmed for NVIDIA; 0–1 uncertain for stripe.com's fast failure); 0 Contents. Cumulative: Search **43–44** (defensible range) / Contents **9** / retries **0**. |
+| Protected-path audit | No file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, `src/description/`, `src/snapshot/`, or `src/orchestration/` changed. `api/snapshot.mjs`, `public/**` unchanged. |
+
+Result: **`D1 DEPLOYMENT + LIVE SMOKE PASSED`**. Neither authorized company reached `snapshot`; this establishes deployment/runtime health only, not evidence-quality validation — that is D2's purpose.
+
+### D2 — production validation + evidence gate
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | Bounded live validation cohort against the unchanged D1 production deployment. Production/runtime code unchanged; documentation-only changes added the D2 validation record and reconciled README.md/docs/PLAN.md/docs/TESTING.md. |
+| Cohort | `notion.so` (domain), `PostHog` (name), `Datadog` (name), `Mercury` (name) — each submitted exactly once, no retries, in the specified order. |
+| notion.so | `snapshot` — `Notion Labs, Inc.` / `notion.com`, 2-sentence description, exactly 3 signals, 10.43s. |
+| PostHog | `snapshot` — `PostHog` / `posthog.com`, 2-sentence description, exactly 3 signals, 6.52s. |
+| Datadog | `unavailable`/`description_unavailable`, 9.14s — safe B5 contract outcome (B1–B3 progressed far enough to invoke B4B, which returned `description_unavailable`; the exact internal B4B reason is intentionally not exposed by the public contract). |
+| Mercury | `snapshot` — `Mercury Technologies, Inc.` / `mercury.com`, 3-sentence description, exactly 3 signals, 6.96s (a clean resolution, differing from Mercury's historically-documented ambiguous outcome — accepted as provider-response variability, not a defect). |
+| Additional submission | One owner-approved re-submission of `notion.so` through the real production browser (beyond the 4-company cohort limit), made solely for owner visual confirmation since this agent has no browser tool. Explicitly recorded as a deviation, not silently absorbed. |
+| Evidence review | All 9 signal source URLs across the 3 snapshots fetched directly and manually reviewed for support/date/identity — all 9 PASS on material event support, source-derived date consistency (via JSON-LD/meta/byline), and company identity; displayed signal wording was supported by the relevant publisher headline/content (not necessarily an exact HTML `<title>` match). Independently re-verified by a dedicated evidence-review sub-agent: 9/9 PASS confirmed, no disagreement. |
+| Distinctness/recency | A second sub-agent independently confirmed all three signal sets are genuinely distinct events (no duplicate-event coverage) and recomputed every recency-bucket assignment as correct; two signals flagged as boundary-adjacent (168/180 days; 86/90 days) but correctly bucketed as of the validation date. |
+| Description review | All three descriptions: 2–3 sentences, correct core business, no embedded URL, no hype — PASS. |
+| Owner browser validation | Performed for the `notion.so` re-submission: owner confirmed correct rendering (heading, fresh description, all 3 signals with correct titles/dates/clickable sources, "Older fallback" badge, clean layout matching approved C2 design) and that a loading state appeared. The ~375px narrow-viewport check was requested but not confirmed by the owner — recorded as not performed, not assumed. |
+| Sub-agents | Evidence reviewer (9/9 PASS, independently fetched and verified); distinctness/recency reviewer (all DISTINCT, all recency buckets correct); final validation reviewer (no overclaim, exactly one new file in the diff, zero frozen-backend/production changes, provider-accounting arithmetic correct, no scope creep). |
+| Full zero-network suite | `node --test test/*.test.mjs` — **352/352 passed** (unchanged from pre-D1/D2 baseline, since D1/D2 made no source-code change). |
+| `git diff --check` | Passed. |
+| Provider/deployment activity | 5 live submissions total; high-confidence 5 Exa Contents (all 5 reached B4B). D2 Search: 5–10 — minimum 5 because each of the 5 submissions necessarily made one broad Search; maximum 10 under the approved ceiling of at most one additional official-domain fallback Search per submission; actual fallback usage is not externally observable. 0 retries. Cumulative: Search **48–54** (defensible range) / Contents **14** / retries **0**. |
+| Protected-path audit | No file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, `src/description/`, `src/snapshot/`, or `src/orchestration/` changed. `api/snapshot.mjs`, `public/**` unchanged. No dependency, framework, or `package.json` added. |
+
+Result: **`D2 PRODUCTION VALIDATION — PASSED`**. At least one evidence-reviewed successful production snapshot was established (in fact three), with no deterministic correctness defect found and no repair made. Full detail: `docs/PHASE_D2_PRODUCTION_VALIDATION.md`. This is not the full final assessment testing matrix and does not establish universal reliability across arbitrary reviewer-entered companies.
 
 ## Final skeptical review
-_Not yet run._
+_Not yet run. The full final assessment testing matrix (§6 above) has not begun._
