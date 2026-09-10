@@ -793,7 +793,20 @@ The project owner approved **`B4B ISOLATED GROUNDED COMPANY DESCRIPTION — APPR
 | Provider accounting | B5 Stage A Exa Search requests: 0; Exa Contents requests: 0; publisher requests: 0; other network requests: 0. Cumulative accounting remains Search 22 / Contents 2 / B4B retries 0. |
 | Protected-path audit | `git status --short` / `git diff --name-only` confirmed no file under `src/targeting/`, `src/discovery/`, `src/selection/`, `src/verification/`, `src/description/`, or `src/snapshot/` was modified. |
 
-B5 Stage A is **implemented and zero-network tested but not live-gate approved** — mocked-dependency tests passing is not a live-gate pass or phase approval. No integrated live B5 request has occurred. No HTTP endpoint, frontend, or deployment exists. Phase C and deployment remain unstarted.
+B5 Stage A is **implemented and zero-network tested but not live-gate approved** — mocked-dependency tests passing is not a live-gate pass or phase approval. No HTTP endpoint, frontend, or deployment exists. Phase C and deployment remain unstarted.
+
+### B5 — integrated live gate (preflight blocked)
+
+| Measure | Observed result |
+| --- | --- |
+| Harness | `scripts/phase-b5-live-smoke.mjs` calls the real, reviewed `createCompanySnapshot()` (commit `4ea2bceb022043fb03c9c7fbe1a6f3a609fe36a5`) exactly once, restricted to `--company NVIDIA` with `--confirmed-free-starter` required. Provider counting uses thin wrappers registered through B5's existing `services` seam; each wrapper delegates entirely to the real `discoverCompany`/`verifyCompanyDiscovery`/`requestCompanyDescription`/`assembleSnapshot` and alters no return value or decision. |
+| Zero-network harness tests | `node --test test/phase-b5-live-smoke.test.mjs` — 15/15 passed: NVIDIA-only restriction, confirmation-flag/key/mode gating, unknown/extra-argument rejection, zero-network `--help`, API-key redaction, a full fake-network no-fallback run and a full fake-network one-fallback run each driving the real production pipeline end-to-end with correct wrapper call counts and a correct final `snapshot` shape, provider-budget-ceiling rejection (missing/duplicated broad Search, >2 total Search, >1 Contents, a completed B3 result with zero Contents requests), a fake-network exercise proving a throw after real counted broad/publisher/Contents activity is captured as a stage-and-count-rich diagnostic rather than collapsing to an error string, a direct unit test of the diagnostic builder, the formatted summary never containing the API key, and non-mutation of the captured production results. |
+| Full zero-network suite | `node --test test/*.test.mjs` — 239/239 passed (224 pre-existing + 15 new). |
+| CLI live-gate attempt | `node scripts/phase-b5-live-smoke.mjs b5-live-smoke --company NVIDIA --confirmed-free-starter` — run exactly once. `EXA_API_KEY` was unavailable to the process (not read/sourced from `.env`); the harness's own `validateOptions()` gate stopped it before any network call. CLI live-gate attempts: 1; network-backed B5 executions: 0. |
+| Provider accounting | Live Exa Search: 0; live Exa Contents: 0; live publisher requests: 0; retries: 0. Cumulative Exa Search remains 22 (unchanged); cumulative Exa Contents remains 2 (unchanged). |
+| Outcome | **`B5 LIVE GATE PRE-FLIGHT BLOCKED — CREDENTIAL/ENVIRONMENT UNAVAILABLE`** — an environment/credential stop, not a provider-side authentication result and not an integration-correctness outcome. |
+
+No B1–B4B or B5 production file changed as part of this gate. No second company and no retry occurred. The zero-network fake-network integration tests above are the only current evidence that the reviewed orchestration composes B1–B4B correctly end-to-end; they are not claimed as a live-gate pass. One live-gate CLI attempt occurred, but credential preflight stopped it before the pipeline or network began, so zero network-backed B5 executions occurred; a future NVIDIA live execution requires fresh project-owner authorization once `EXA_API_KEY` is available. See `docs/PHASE_B5_LIVE_GATE.md`. Broader Phase B validation, Phase C, endpoint/UI, and deployment remain unstarted.
 
 ## Phase C
 _Not yet run._
