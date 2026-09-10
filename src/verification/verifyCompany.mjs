@@ -25,6 +25,21 @@ export const VERIFICATION_REASON = Object.freeze({
   DUPLICATE: "duplicate",
 });
 
+function emptyDiagnostic() {
+  return {
+    resolvedUrl: null,
+    sourceTitle: null,
+    publisherDerivedDate: null,
+    recencyBucket: null,
+    sourceClass: null,
+    evidenceSnippet: null,
+  };
+}
+
+function withDiagnostic(result, diagnostic, options) {
+  return options.includeDiagnostic ? { ...result, diagnostic } : result;
+}
+
 function normalizeSpace(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
 }
@@ -207,32 +222,47 @@ function isDuplicateEvidence(verified, accepted, companyName) {
 
 export async function verifyCandidate(candidate, company, options = {}) {
   const fetched = await fetchHtmlSource(candidate.url, options);
-  if (!fetched.ok) return { accepted: false, reason: fetched.reason };
+  if (!fetched.ok) return withDiagnostic({ accepted: false, reason: fetched.reason }, emptyDiagnostic(), options);
 
   const article = extractArticleEvidence(fetched.html);
+  const diagnostic = {
+    ...emptyDiagnostic(),
+    resolvedUrl: fetched.resolvedUrl,
+    sourceTitle: article.sourceTitle,
+    publisherDerivedDate: article.publishedDate,
+  };
   if (
     new URL(fetched.resolvedUrl).pathname === "/" ||
     !article.hasArticleContainer ||
     !article.sourceTitle ||
     article.body.length < 120
   ) {
-    return { accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM };
+    return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM }, diagnostic, options);
   }
   const sourceClass = classifySource(fetched.resolvedUrl, company.officialDomain);
+  diagnostic.sourceClass = sourceClass;
   const fullText = `${article.sourceTitle} ${article.body}`;
   if (!matchesCompany(fullText, company.companyName)) {
-    return { accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM };
+    return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM }, diagnostic, options);
   }
-  if (isObviouslyTrivial(fullText)) return { accepted: false, reason: VERIFICATION_REASON.TRIVIAL };
-  if (!article.publishedDate) return { accepted: false, reason: VERIFICATION_REASON.DATE_UNKNOWN };
+  if (isObviouslyTrivial(fullText)) {
+    return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.TRIVIAL }, diagnostic, options);
+  }
+  if (!article.publishedDate) {
+    return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.DATE_UNKNOWN }, diagnostic, options);
+  }
   const recencyBucket = classifyRecency(article.publishedDate, options.now ?? new Date());
-  if (recencyBucket === "UNKNOWN") return { accepted: false, reason: VERIFICATION_REASON.DATE_UNKNOWN };
-  if (recencyBucket === "OLD") return { accepted: false, reason: VERIFICATION_REASON.STALE };
+  diagnostic.recencyBucket = recencyBucket;
+  if (recencyBucket === "UNKNOWN") {
+    return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.DATE_UNKNOWN }, diagnostic, options);
+  }
+  if (recencyBucket === "OLD") return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.STALE }, diagnostic, options);
 
   const anchorTokens = candidateAnchorTokens(candidate, company.companyName);
   const snippet = sentenceForEvidence(article.body, anchorTokens);
-  if (!snippet) return { accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM };
-  return {
+  if (!snippet) return withDiagnostic({ accepted: false, reason: VERIFICATION_REASON.UNSUPPORTED_CLAIM }, diagnostic, options);
+  diagnostic.evidenceSnippet = snippet;
+  return withDiagnostic({
     accepted: true,
     reason: VERIFICATION_REASON.ACCEPTED,
     evidence: {
@@ -245,15 +275,34 @@ export async function verifyCandidate(candidate, company, options = {}) {
       sourceClass,
       evidenceSnippet: snippet,
     },
+  }, diagnostic, options);
+}
+
+function traceEntry(origin, candidate, result, reason = result.reason) {
+  return {
+    origin,
+    rank: candidate.rank,
+    candidateTitle: candidate.title,
+    sourceUrl: candidate.url,
+    result: reason === VERIFICATION_REASON.ACCEPTED ? "accepted" : "rejected",
+    reason,
+    ...(result.diagnostic ?? emptyDiagnostic()),
   };
 }
 
-async function verifyQueue(candidates, company, accepted, options) {
+async function verifyQueue(candidates, company, accepted, options, { origin, trace } = {}) {
   for (const candidate of candidates) {
-    const result = await verifyCandidate(candidate, company, options);
-    if (!result.accepted) continue;
-    if (isDuplicateEvidence(result.evidence, accepted, company.companyName)) continue;
+    const result = await verifyCandidate(candidate, company, trace ? { ...options, includeDiagnostic: true } : options);
+    if (!result.accepted) {
+      trace?.push(traceEntry(origin, candidate, result));
+      continue;
+    }
+    if (isDuplicateEvidence(result.evidence, accepted, company.companyName)) {
+      trace?.push(traceEntry(origin, candidate, result, VERIFICATION_REASON.DUPLICATE));
+      continue;
+    }
     accepted.push(result.evidence);
+    trace?.push(traceEntry(origin, candidate, result));
     if (accepted.length === 3) break;
   }
 }
@@ -271,10 +320,11 @@ function resultFor(company, evidence, fallbackUsed) {
  * Verify a B2-ready queue sequentially; one fallback is possible only after it
  * is exhausted with fewer than three accepted source-derived evidence records.
  */
-export async function verifyCompanyDiscovery(
+async function runCompanyVerification(
   discovery,
   apiKey,
   { sourceFetchImpl = fetch, exaFetchImpl = fetch, now = new Date(), sourceOptions = {} } = {},
+  includeDiagnostic = false,
 ) {
   if (!discovery || discovery.state !== "ready_for_verification") {
     throw new TypeError("B3 requires a B2 ready_for_verification result.");
@@ -282,8 +332,16 @@ export async function verifyCompanyDiscovery(
   const company = discovery.company;
   const accepted = [];
   const verificationOptions = { ...sourceOptions, fetchImpl: sourceFetchImpl, now };
-  await verifyQueue(discovery.prioritized, company, accepted, verificationOptions);
-  if (accepted.length === 3) return resultFor(company, accepted, false);
+  const diagnostic = includeDiagnostic ? { broad: [], fallback: null, finalAcceptedCount: null } : null;
+  await verifyQueue(discovery.prioritized, company, accepted, verificationOptions, {
+    origin: "broad",
+    trace: diagnostic?.broad,
+  });
+  if (accepted.length === 3) {
+    const result = resultFor(company, accepted, false);
+    if (diagnostic) diagnostic.finalAcceptedCount = accepted.length;
+    return { result, diagnostic };
+  }
   if (typeof apiKey !== "string" || apiKey.length === 0) {
     throw new TypeError("apiKey is required when B3 fallback is needed.");
   }
@@ -293,6 +351,33 @@ export async function verifyCompanyDiscovery(
     now,
   });
   const prioritized = selectSignals(fallback.candidates, { ...company, now }).prioritized;
-  await verifyQueue(prioritized, company, accepted, verificationOptions);
-  return resultFor(company, accepted, true);
+  if (diagnostic) {
+    diagnostic.fallback = {
+      triggered: true,
+      broadExhaustedBelowThree: true,
+      acceptedCountBeforeFallback: accepted.length,
+      candidateCount: fallback.candidates.length,
+      prioritizedCandidateCount: prioritized.length,
+      trace: [],
+    };
+  }
+  await verifyQueue(prioritized, company, accepted, verificationOptions, {
+    origin: "fallback",
+    trace: diagnostic?.fallback?.trace,
+  });
+  const result = resultFor(company, accepted, true);
+  if (diagnostic) diagnostic.finalAcceptedCount = accepted.length;
+  return { result, diagnostic };
+}
+
+export async function verifyCompanyDiscovery(discovery, apiKey, options = {}) {
+  return (await runCompanyVerification(discovery, apiKey, options)).result;
+}
+
+/**
+ * Smoke/test-only observer over the production verification implementation.
+ * It adds no retrieval or acceptance behavior and returns no publisher HTML.
+ */
+export async function verifyCompanyDiscoveryForSmoke(discovery, apiKey, options = {}) {
+  return runCompanyVerification(discovery, apiKey, options, true);
 }

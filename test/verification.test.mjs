@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { extractArticleEvidence, verifyCandidate, verifyCompanyDiscovery } from "../src/verification/verifyCompany.mjs";
+import {
+  extractArticleEvidence,
+  verifyCandidate,
+  verifyCompanyDiscovery,
+  verifyCompanyDiscoveryForSmoke,
+} from "../src/verification/verifyCompany.mjs";
 import { fetchHtmlSource, parseSafeSourceUrl } from "../src/verification/sourceFetch.mjs";
 
 const NOW = new Date("2026-09-09T12:00:00.000Z");
@@ -367,6 +372,108 @@ test("B3 propagates a fallback provider failure instead of misclassifying it as 
     }),
     (error) => error?.code === "provider_quota",
   );
+});
+
+test("B3 smoke diagnostics trace each evaluated broad candidate without changing the production result", async () => {
+  const accepted = candidate({ rank: 1, url: "https://acme.test/atlas", highlights: ["Acme launches Atlas platform."] });
+  const inaccessible = candidate({ rank: 2, title: "Acme signs Beacon partnership", url: "https://publisher.test/inaccessible" });
+  const nonHtml = candidate({ rank: 3, title: "Acme opens Cedar expansion", url: "https://publisher.test/pdf" });
+  const noDate = candidate({ rank: 4, title: "Acme launches Delta service", url: "https://publisher.test/no-date" });
+  const stale = candidate({ rank: 5, title: "Acme acquires Echo", url: "https://publisher.test/stale" });
+  const trivial = candidate({ rank: 6, title: "Acme updates Foxtrot", url: "https://publisher.test/trivial" });
+  const unsupported = candidate({ rank: 7, title: "Acme announces Golf", url: "https://publisher.test/unsupported" });
+  const duplicate = candidate({ ...accepted, rank: 8, url: "https://publisher.test/duplicate" });
+  const broad = [accepted, inaccessible, nonHtml, noDate, stale, trivial, unsupported, duplicate];
+  const pages = {
+    [accepted.url]: article(),
+    [nonHtml.url]: response("pdf", { contentType: "application/pdf" }),
+    [noDate.url]: article({ title: noDate.title, date: null, jsonLd: false, body: "Acme launches Delta service with a substantial new platform capability for enterprise customers and partners." }),
+    [stale.url]: article({ title: stale.title, date: "2026-01-01", body: "Acme acquires Echo in a substantial strategic transaction for enterprise customers and operations." }),
+    [trivial.url]: article({ title: trivial.title, body: "Acme updates Foxtrot in a routine update with a small maintenance change for enterprise customers and partners." }),
+    [unsupported.url]: "<!doctype html><script type=\"application/ld+json\">{\"@type\":\"NewsArticle\",\"headline\":\"Other announces Golf\",\"datePublished\":\"2026-09-01\"}</script><article><h1>Other announces Golf</h1><p>Other announces Golf with a substantial strategic product capability for enterprise customers and partners.</p><p>Additional publisher reporting describes the business impact for customers and operations.</p></article>",
+    [duplicate.url]: article(),
+  };
+  const verificationOptions = {
+    now: NOW,
+    sourceFetchImpl: async (url) => {
+      if (url === inaccessible.url) throw new Error("unavailable");
+      const item = pages[url];
+      if (!item) throw new Error(`unexpected source ${url}`);
+      return item instanceof Response ? item : response(item);
+    },
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  };
+  const plain = await verifyCompanyDiscovery(discovery(broad), "test-key", verificationOptions);
+  const observed = await verifyCompanyDiscoveryForSmoke(discovery(broad), "test-key", verificationOptions);
+  assert.deepEqual(observed.result, plain);
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.reason), [
+    "accepted", "inaccessible", "unsupported_source_type", "date_unknown", "stale", "trivial", "unsupported_claim", "duplicate",
+  ]);
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.result), [
+    "accepted", "rejected", "rejected", "rejected", "rejected", "rejected", "rejected", "rejected",
+  ]);
+  assert.equal(observed.diagnostic.broad[0].origin, "broad");
+  assert.equal(observed.diagnostic.broad[0].resolvedUrl, accepted.url);
+  assert.equal(observed.diagnostic.broad[1].sourceTitle, null);
+  assert.equal(observed.diagnostic.broad[2].sourceClass, null);
+  assert.equal(observed.diagnostic.broad[3].publisherDerivedDate, null);
+  assert.equal(observed.diagnostic.broad[4].recencyBucket, "OLD");
+  assert.equal(observed.diagnostic.broad[7].sourceTitle, accepted.title);
+  assert.deepEqual(observed.diagnostic.fallback, {
+    triggered: true,
+    broadExhaustedBelowThree: true,
+    acceptedCountBeforeFallback: 1,
+    candidateCount: 0,
+    prioritizedCandidateCount: 0,
+    trace: [],
+  });
+});
+
+test("B3 smoke diagnostics stop at three accepted broad records and do not invoke fallback", async () => {
+  const broad = [
+    candidate({ rank: 1, url: "https://acme.test/atlas" }),
+    candidate({ rank: 2, title: "Acme signs Beacon partnership", url: "https://acme.test/beacon" }),
+    candidate({ rank: 3, title: "Acme opens Cedar expansion", url: "https://acme.test/cedar" }),
+    candidate({ rank: 4, title: "Acme appoints Delta leader", url: "https://acme.test/delta" }),
+  ];
+  const calls = [];
+  const observed = await verifyCompanyDiscoveryForSmoke(discovery(broad), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [broad[0].url]: article(),
+      [broad[1].url]: article({ title: broad[1].title, body: "Acme signs Beacon partnership as a substantial strategic agreement for enterprise customers." }),
+      [broad[2].url]: article({ title: broad[2].title, body: "Acme opens Cedar expansion to add substantial regional capacity for enterprise customers." }),
+    }, calls),
+    exaFetchImpl: async () => { throw new Error("fallback must not run"); },
+  });
+  assert.equal(observed.result.state, "verified");
+  assert.equal(observed.diagnostic.fallback, null);
+  assert.equal(observed.diagnostic.finalAcceptedCount, 3);
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.rank), [1, 2, 3]);
+  assert.deepEqual(calls, broad.slice(0, 3).map((item) => item.url));
+});
+
+test("B3 smoke diagnostics separate the fallback trace after broad exhaustion", async () => {
+  const broad = [candidate({ rank: 1, url: "https://acme.test/atlas" })];
+  const fallback = [
+    candidate({ rank: 1, title: "Acme signs Beacon partnership", url: "https://acme.test/beacon" }),
+    candidate({ rank: 2, title: "Acme opens Cedar expansion", url: "https://acme.test/cedar" }),
+  ];
+  const observed = await verifyCompanyDiscoveryForSmoke(discovery(broad), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [broad[0].url]: article(),
+      [fallback[0].url]: article({ title: fallback[0].title, body: "Acme signs Beacon partnership as a substantial strategic agreement for enterprise customers." }),
+      [fallback[1].url]: article({ title: fallback[1].title, body: "Acme opens Cedar expansion to add substantial regional capacity for enterprise customers." }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload(fallback) }),
+  });
+  assert.equal(observed.result.state, "verified");
+  assert.equal(observed.diagnostic.fallback.acceptedCountBeforeFallback, 1);
+  assert.equal(observed.diagnostic.fallback.candidateCount, 2);
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.origin), ["broad"]);
+  assert.deepEqual(observed.diagnostic.fallback.trace.map((entry) => entry.origin), ["fallback", "fallback"]);
+  assert.deepEqual(observed.diagnostic.fallback.trace.map((entry) => entry.reason), ["accepted", "accepted"]);
 });
 
 test("B3 has no historical-script dependency and rejects non-ready B2 input before network", async () => {

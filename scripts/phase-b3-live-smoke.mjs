@@ -3,8 +3,8 @@
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { discoverCompany } from "../src/discovery/discoverCompany.mjs";
-import { verifyCompanyDiscovery } from "../src/verification/verifyCompany.mjs";
+import { discoverCompanyForSmoke } from "../src/discovery/discoverCompany.mjs";
+import { verifyCompanyDiscoveryForSmoke } from "../src/verification/verifyCompany.mjs";
 
 export const B3_LIVE_SMOKE_MODE = "b3-live-smoke";
 export const ALLOWED_COMPANIES = Object.freeze(["NVIDIA", "Stripe"]);
@@ -53,7 +53,7 @@ function evidenceSummary(evidence) {
   }));
 }
 
-export function summarizeB3LiveSmoke(company, discovery, verification) {
+export function summarizeB3LiveSmoke(company, discovery, b2Diagnostic, verification, b3Diagnostic) {
   const fallbackRequestCount = verification.retrieval.fallbackUsed ? 1 : 0;
   const totalExaRequestCount = verification.retrieval.exaRequestCount;
   if (totalExaRequestCount !== 1 + fallbackRequestCount || totalExaRequestCount > 2) {
@@ -67,6 +67,7 @@ export function summarizeB3LiveSmoke(company, discovery, verification) {
       identityConfirmation: "resolved",
       broadProviderLatencyMs: discovery.provider.latencyMs,
       broadProviderEstimatedCostUsd: discovery.provider.estimatedCostUsd,
+      diagnostic: b2Diagnostic,
     },
     providerUse: {
       broadExaRequestCount: 1,
@@ -80,6 +81,7 @@ export function summarizeB3LiveSmoke(company, discovery, verification) {
       state: verification.state,
       evidenceCount: verification.evidence.length,
       evidence: evidenceSummary(verification.evidence),
+      diagnostic: b3Diagnostic,
     },
   };
 }
@@ -90,11 +92,12 @@ export async function runB3LiveSmoke(
   { discoverOptions = {}, verificationOptions = {} } = {},
 ) {
   validateOptions(options, apiKey);
-  const discovery = await discoverCompany(options.company, apiKey, discoverOptions);
+  const discovered = await discoverCompanyForSmoke(options.company, apiKey, discoverOptions);
+  const discovery = discovered.result;
   if (discovery.state !== "ready_for_verification") {
     return {
       submittedCompany: options.company,
-      b2: { state: discovery.state, reason: discovery.reason ?? null },
+      b2: { state: discovery.state, reason: discovery.reason ?? null, diagnostic: discovered.diagnostic },
       providerUse: {
         broadExaRequestCount: 1,
         fallbackExaRequestCount: 0,
@@ -106,8 +109,8 @@ export async function runB3LiveSmoke(
       b3: null,
     };
   }
-  const verification = await verifyCompanyDiscovery(discovery, apiKey, verificationOptions);
-  return summarizeB3LiveSmoke(options.company, discovery, verification);
+  const verified = await verifyCompanyDiscoveryForSmoke(discovery, apiKey, verificationOptions);
+  return summarizeB3LiveSmoke(options.company, discovery, discovered.diagnostic, verified.result, verified.diagnostic);
 }
 
 export function formatSmokeOutput(summary, apiKey = "") {

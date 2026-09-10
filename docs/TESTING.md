@@ -660,7 +660,35 @@ No B3 live validation, source-page smoke, synthesis, endpoint, UI, deployment, B
 | Provider/publisher activity | NVIDIA Exa 0; Stripe Exa 0; publisher GETs 0; retries 0. |
 | Accounting / outcome | Starting cumulative Exa 14; B3 gate Exa 0; ending cumulative Exa 14. `B3 LIVE GATE PRE-FLIGHT BLOCKED — CREDENTIAL/ENVIRONMENT UNAVAILABLE`. |
 
-No NVIDIA or Stripe live case was run. No provider response, authorization header, source body, candidate output, or temporary artifact was persisted. B3 remains pending a separately completed live gate and project-owner source review; B4 and later work remain unstarted.
+The preflight stop is historical: it was local/environmental, reached Exa 0 times, and is not a provider-side authentication or live evidence-quality result.
+
+### B3 live-gate owner-run continuation
+
+| Measure | Observed result |
+| --- | --- |
+| Authority / historical relationship | The project owner supplied this correction as the authoritative current record. The preceding credential preflight remains historical fact but is superseded for live-gate evaluation by the owner-run results below. |
+| NVIDIA B2 / request use | B2 `ready_for_verification`; `NVIDIA Corporation` / `nvidia.com`; broad Exa 1 and official-domain fallback Exa 1; retries 0. |
+| NVIDIA B3 result | `insufficient_evidence`; 2 accepted first-party NVIDIA records: `NVIDIA to Acquire Hugging Face` and `Sparks Fly: NVIDIA Accelerates Local AI at IFA 2026`; both 2026-09-03 / `RECENT`. The first accepted snippet was header-like: `NVIDIA to Acquire Hugging Face September 3, 2026 ... Share...`. |
+| Stripe production B3 run | Broad Exa 1; B2 `clarification_needed` / `insufficient_identity_evidence`; B3 not reached; retries 0. |
+| Separate Stripe B2 diagnostic | Exa 1; `Stripe, Inc.` / `stripe.com` / `ambiguous:true`; B1 `resolved`; 3 first-party `stripe.com` grounding URLs for `resolvedCompanyName` and 3 for `officialDomain`. The original clarification response was not retained, so the exact difference is unknown. |
+| Provider accounting | Starting cumulative Exa 14; NVIDIA broad 1; NVIDIA fallback 1; Stripe broad 1; Stripe B2 diagnostic 1; actual Exa requests 4; retries 0; ending cumulative Exa 18. |
+| Decision | No production acceptance/retrieval policy change is inferred. B3 is not production-approved; diagnostic root-cause review and project-owner decision remain pending. |
+
+No raw provider response, authorization header, source body, candidate output beyond the owner-provided facts, or temporary artifact is reconstructed or persisted. B4 and later work remain unstarted.
+
+### B3R1 Stage A — diagnostic-only observability
+
+| Measure | Observed result |
+| --- | --- |
+| Purpose | Diagnose the owner-run NVIDIA shortfall and Stripe B2 variability without changing B1/B2/B3 acceptance or retrieval policy. |
+| B2 observer | The smoke harness reuses `discoverCompanyForSmoke(...)` once and exposes only its existing sanitized identity, field-specific grounding, confirmation, aggregate, latency, and cost diagnostic on both ready and clarification outcomes. |
+| B3 observer | The shared verification execution records each actually evaluated candidate after its real decision: broad/fallback origin, rank, title, URL, accepted/rejected reason, and safe parsed-source metadata where available. Duplicate traces occur only after the existing production dedupe decision. Fallback records broad exhaustion, accepted count before fallback, candidate counts, its trace, and the final accepted count. |
+| Production invariance | Normal `discoverCompany(...)`, `verifyCandidate(...)`, and `verifyCompanyDiscovery(...)` return contracts and decisions remain unchanged; no second verifier, retry, third search, persistence, raw provider response, publisher HTML, credential, or header storage was added. |
+| Focused verification | Syntax checks; `node --test test/verification.test.mjs test/phase-b3-live-smoke.test.mjs` — 27/27 passed. Covers all seven rejection reasons, accepted trace, post-verification duplicate trace, origin, stop-at-three, fallback trace, B2 clarification diagnostics, real traced-output redaction, and normal B3-result equivalence. |
+| Full regression | `node --test test/*.test.mjs` — 158/158 passed; `git diff --check` passed. |
+| Stage A provider accounting | Starting cumulative Exa 18; Exa 0; publisher GETs 0; retries 0; ending cumulative Exa 18. |
+
+No B3R1 live replay or production-policy correction has occurred in Stage A. B3 remains not production-approved pending root-cause review and project-owner decision.
 
 ## Phase C
 _Not yet run._

@@ -175,6 +175,17 @@ test("B3 live smoke stops after a safe B2 clarification without source or fallba
   assert.equal(sourceCalls, 0);
   assert.equal(fallbackCalls, 0);
   assert.equal(result.b2.state, "clarification_needed");
+  assert.deepEqual(result.b2.diagnostic.identity, {
+    resolvedCompanyName: "NVIDIA and NVIDIA Health",
+    officialDomain: "nvidia.test",
+    ambiguous: true,
+  });
+  assert.deepEqual(result.b2.diagnostic.confirmation, {
+    state: "clarification_needed",
+    reason: "insufficient_identity_evidence",
+  });
+  assert.equal(result.b2.diagnostic.groundingByField.resolvedCompanyName[0], "https://nvidia.test/about");
+  assert.equal(result.b2.diagnostic.provider.resultCount, 0);
   assert.equal(result.b3, null);
   assert.deepEqual(result.providerUse, {
     broadExaRequestCount: 1,
@@ -197,10 +208,39 @@ test("B3 live smoke output is sanitized and the harness has no persistence or re
   assert.match(output, /"submittedCompany": "NVIDIA"/);
   assert.doesNotMatch(output, /EXA_API_KEY|x-api-key|raw response|requestId|exa-live-smoke-secret-key/i);
   const source = readFileSync(new URL("../scripts/phase-b3-live-smoke.mjs", import.meta.url), "utf8");
-  assert.match(source, /discoverCompany/);
-  assert.match(source, /verifyCompanyDiscovery/);
+  assert.match(source, /discoverCompanyForSmoke/);
+  assert.match(source, /verifyCompanyDiscoveryForSmoke/);
   assert.doesNotMatch(source, /node:(?:fs|http|https)/);
   assert.doesNotMatch(source, /writeFile|appendFile|createWriteStream|setInterval|while\s*\(/);
-  assert.equal((source.match(/discoverCompany\(/g) ?? []).length, 1);
-  assert.equal((source.match(/verifyCompanyDiscovery\(/g) ?? []).length, 1);
+  assert.equal((source.match(/discoverCompanyForSmoke\(/g) ?? []).length, 1);
+  assert.equal((source.match(/verifyCompanyDiscoveryForSmoke\(/g) ?? []).length, 1);
+});
+
+test("B3 live smoke formatted trace excludes publisher HTML and unused provider fields", async () => {
+  const candidates = [
+    candidate(1, "NVIDIA launches Atlas platform", "https://nvidia.test/atlas"),
+    candidate(2, "NVIDIA signs Beacon partnership", "https://nvidia.test/beacon"),
+    candidate(3, "NVIDIA opens Cedar expansion", "https://nvidia.test/cedar"),
+  ];
+  const result = await runB3LiveSmoke(options(), "exa-live-smoke-secret-key", {
+    discoverOptions: {
+      now: NOW,
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ...broadPayload(candidates), requestId: "RAW_PROVIDER_SENTINEL" }),
+      }),
+    },
+    verificationOptions: {
+      now: NOW,
+      sourceFetchImpl: async (url) => {
+        const item = candidates.find((entry) => entry.url === url);
+        return new Response(`<!-- PUBLISHER_HTML_SENTINEL -->${article(item.title)}`, { headers: { "content-type": "text/html" } });
+      },
+      exaFetchImpl: async () => { throw new Error("fallback must not run"); },
+    },
+  });
+  const output = formatSmokeOutput(result, "exa-live-smoke-secret-key");
+  assert.match(output, /"diagnostic"/);
+  assert.doesNotMatch(output, /PUBLISHER_HTML_SENTINEL|RAW_PROVIDER_SENTINEL|exa-live-smoke-secret-key/);
 });
