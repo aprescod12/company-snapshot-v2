@@ -754,6 +754,359 @@ test("B3R3: a hyphenated multi-token official-domain brand requires every token 
   assert.equal(onlyOneTokenPresent.diagnostic.sourceClass, "FIRST_PARTY");
 });
 
+// --- D3: generic same-event duplicate detection via shared verified-evidence quantity anchors ---
+
+const LINEAR = { inputKind: "domain", companyName: "Linear", officialDomain: "linear.app" };
+
+function linearGrowthArticle() {
+  return article({
+    title: "Sharing Linear's growth with the people building it",
+    date: "2026-08-26",
+    body: "Linear is sharing its growth with the people building it: the team completed a $99 million tender offer that values the company at $2.5 billion, alongside continued gains in annual recurring revenue and net retention. Linear says the milestone reflects strong adoption of its product development system across engineering teams.",
+  });
+}
+
+function linearTenderArticle() {
+  return article({
+    title: "Linear Completes $99 Million Tender At $2.5 Billion Valuation As ARR Tops $100 Million And Net Retention Hits 177%",
+    date: "2026-08-28",
+    body: "Linear completed a $99 million tender offer at a $2.5 billion valuation as ARR tops $100 million and net retention hits 177 percent. The milestone reflects strong customer growth and product adoption across engineering teams.",
+  });
+}
+
+test("D3: two dissimilar-headline pages covering the same $99M tender / $2.5B valuation event are recognized as duplicate coverage", async () => {
+  const growth = candidate({
+    rank: 1,
+    title: "Sharing Linear's growth with the people building it",
+    url: "https://linear.app/blog/sharing-growth",
+    publishedDate: "2026-08-26",
+    highlights: ["Sharing Linear's growth with the people building it."],
+  });
+  const tender = candidate({
+    rank: 2,
+    title: "Linear Completes $99 Million Tender At $2.5 Billion Valuation As ARR Tops $100 Million And Net Retention Hits 177%",
+    url: "https://techfinance.test/linear-tender-offer",
+    publishedDate: "2026-08-28",
+    highlights: ["Linear Completes $99 Million Tender At $2.5 Billion Valuation."],
+  });
+  const observed = await verifyCompanyDiscoveryForSmoke(
+    { state: "ready_for_verification", company: LINEAR, prioritized: [growth, tender] },
+    "test-key",
+    {
+      now: NOW,
+      sourceFetchImpl: sourceMap({
+        [growth.url]: linearGrowthArticle(),
+        [tender.url]: linearTenderArticle(),
+      }),
+      exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+    },
+  );
+  // Precondition: the old title-only heuristic could never have merged these
+  // two headlines by lexical similarity alone -- confirming this test is
+  // actually exercising the new evidence-quantity-anchor path, not the
+  // pre-existing title-similarity dedupe.
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.reason), ["accepted", "duplicate"]);
+  assert.equal(observed.result.state, "insufficient_evidence");
+  assert.equal(observed.result.evidence.length, 1);
+  assert.equal(observed.result.evidence[0].sourceUrl, growth.url);
+});
+
+test("D3 anti-overdedupe (A): two funding rounds with different amounts and overlapping growth language stay distinct", async () => {
+  const seriesA = candidate({
+    rank: 1,
+    title: "Acme raises new funding to expand its team",
+    url: "https://acme.test/news/funding-a",
+    highlights: ["Acme raises new funding to expand its team."],
+  });
+  const seriesB = candidate({
+    rank: 2,
+    title: "Acme secures fresh capital for global expansion",
+    url: "https://secondary.test/funding-b",
+    highlights: ["Acme secures fresh capital for global expansion."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([seriesA, seriesB]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [seriesA.url]: article({
+        title: seriesA.title,
+        body: "Acme announced today that it raised $50 million in a new funding round to expand its team and accelerate product development. The company said the investment reflects strong growth and customer demand for its platform.",
+      }),
+      [seriesB.url]: article({
+        title: seriesB.title,
+        body: "Acme secured $120 million in fresh capital to fund its global expansion and scale operations across new markets. The company highlighted continued growth and strong customer adoption of its platform.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("D3 anti-overdedupe (B): a financing event and an unrelated product launch stay distinct", async () => {
+  const funding = candidate({
+    rank: 1,
+    title: "Acme raises $50 million in Series B funding",
+    url: "https://acme.test/news/series-b",
+    highlights: ["Acme raises $50 million in Series B funding."],
+  });
+  const launch = candidate({
+    rank: 2,
+    title: "Acme launches new Atlas AI feature for enterprise customers",
+    url: "https://acme.test/news/atlas-ai",
+    highlights: ["Acme launches new Atlas AI feature for enterprise customers."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([funding, launch]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [funding.url]: article({
+        title: funding.title,
+        body: "Acme announced a $50 million Series B funding round to accelerate hiring and product development. The company said the raise reflects strong investor confidence in its growth trajectory.",
+      }),
+      [launch.url]: article({
+        title: launch.title,
+        body: "Acme launched a new Atlas AI feature designed to help enterprise customers automate routine workflows. The company said the feature is now generally available across all paid plans.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("D3 anti-overdedupe (C): two product announcements sharing generic AI/enterprise/platform/customer/launch language stay distinct", async () => {
+  const first = candidate({
+    rank: 1,
+    title: "Acme launches new AI platform for enterprise customers",
+    url: "https://acme.test/news/ai-platform",
+    highlights: ["Acme launches new AI platform for enterprise customers."],
+  });
+  const second = candidate({
+    rank: 2,
+    title: "Acme partners with Globex to bring AI tools to enterprise customers",
+    url: "https://acme.test/news/globex-partnership",
+    highlights: ["Acme partners with Globex to bring AI tools to enterprise customers."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([first, second]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [first.url]: article({
+        title: first.title,
+        body: "Acme launched a new AI platform giving enterprise customers tools to automate operations, promising 40 percent faster workflows and analysis at scale. The company said the platform is available immediately for enterprise accounts.",
+      }),
+      [second.url]: article({
+        title: second.title,
+        body: "Acme announced a partnership with Globex to bring joint AI tools to enterprise customers across regulated industries, citing 65 percent faster compliance reviews in early trials. The companies said the partnership expands what enterprise customers can build.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // Both bodies carry a real, non-overlapping quantity anchor (40 percent vs
+  // 65 percent) alongside the shared generic AI/enterprise/platform/customer
+  // language, so this test genuinely exercises the new anchor comparison
+  // (not just the pre-existing title check) and confirms it correctly
+  // declines to merge on differing values.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("D3 anti-overdedupe (D): a single shared incidental quantity anchor does not trigger dedupe", async () => {
+  const security = candidate({
+    rank: 1,
+    title: "Acme reports fewer security incidents this year",
+    url: "https://acme.test/news/security-report",
+    highlights: ["Acme reports fewer security incidents this year."],
+  });
+  const performance = candidate({
+    rank: 2,
+    title: "Acme ships faster page load times in new release",
+    url: "https://acme.test/news/performance-release",
+    highlights: ["Acme ships faster page load times in new release."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([security, performance]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [security.url]: article({
+        title: security.title,
+        body: "Acme reported a 50 percent reduction in security incidents blocked this year following a new detection system. The company said the improvement reflects sustained investment in its security team.",
+      }),
+      [performance.url]: article({
+        title: performance.title,
+        body: "Acme shipped a new release delivering 50 percent faster page load times across its product. The company said the performance work improves the experience for every customer.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("D3 anti-overdedupe (E): identical recycled 'About the company' boilerplate quantities in the footer of two unrelated articles do not trigger dedupe", async () => {
+  const filler = "Acme continues to invest in its distributed engineering and research teams across multiple global offices this quarter. ".repeat(20);
+  const boilerplate = "About Acme: Acme is trusted by 50 million users worldwide and has grown revenue 20 percent year over year.";
+  const lab = candidate({
+    rank: 1,
+    title: "Acme opens new research lab in Austin",
+    url: "https://acme.test/news/austin-lab",
+    highlights: ["Acme opens new research lab in Austin."],
+  });
+  const cto = candidate({
+    rank: 2,
+    title: "Acme names new chief technology officer",
+    url: "https://acme.test/news/new-cto",
+    highlights: ["Acme names new chief technology officer."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([lab, cto]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [lab.url]: article({
+        title: lab.title,
+        body: `Acme today opened a new research lab in Austin, Texas, to expand its engineering capacity. ${filler}${boilerplate}`,
+      }),
+      [cto.url]: article({
+        title: cto.title,
+        body: `Acme named a new chief technology officer to lead its product and engineering organization. ${filler}${boilerplate}`,
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // Both articles share the identical boilerplate figures ("50 million
+  // users", "20 percent") far past the anchor-scan bound, proving the bound
+  // -- not mere coincidence -- is what keeps these distinct: without it,
+  // this recycled footer would supply two matching anchors and wrongly
+  // merge two genuinely unrelated announcements.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("D3-correction: a same-event pair requiring both a monetary anchor and a percent-symbol anchor dedupes ('%' must normalize like 'percent')", async () => {
+  const journey = candidate({
+    rank: 1,
+    title: "Acme's founders share more about their fundraising journey",
+    url: "https://acme.test/news/founders-journey",
+    highlights: ["Acme's founders share more about their fundraising journey."],
+  });
+  const stakeSale = candidate({
+    rank: 2,
+    title: "Acme Sells 50 Percent Stake In $20 Million Funding Round",
+    url: "https://financewire.test/acme-stake-sale",
+    highlights: ["Acme Sells 50 Percent Stake In $20 Million Funding Round."],
+  });
+  const observed = await verifyCompanyDiscoveryForSmoke(
+    { state: "ready_for_verification", company: { ...COMPANY, companyName: "Acme", officialDomain: "acme.test" }, prioritized: [journey, stakeSale] },
+    "test-key",
+    {
+      now: NOW,
+      sourceFetchImpl: sourceMap({
+        [journey.url]: article({
+          title: journey.title,
+          date: "2026-08-26",
+          body: "Acme's founders are sharing more about their fundraising journey: the round included a $20 million investment and gave new investors a 50% stake in the company. Acme says the milestone reflects strong momentum for the team.",
+        }),
+        [stakeSale.url]: article({
+          title: stakeSale.title,
+          date: "2026-08-28",
+          body: "Acme sold a 50 percent stake in the company as part of a $20 million funding round. Acme says the deal reflects strong investor confidence in the business.",
+        }),
+      }),
+      exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+    },
+  );
+  // This pair requires BOTH the $20 million anchor and the 50%/50-percent
+  // anchor to reach the 2-anchor threshold -- there is no other shared
+  // anchor and the titles are dissimilar enough that the pre-existing
+  // title-similarity check cannot merge them on its own. If "%" fails to
+  // normalize like "percent", only one anchor (20:million) is ever shared
+  // and this pair is wrongly left distinct.
+  assert.deepEqual(observed.diagnostic.broad.map((entry) => entry.reason), ["accepted", "duplicate"]);
+  assert.equal(observed.result.state, "insufficient_evidence");
+  assert.equal(observed.result.evidence.length, 1);
+});
+
+test("D3-correction: two distinct events (a research lab opening and a CTO hire) sharing recycled early evergreen metrics must NOT be deduped", async () => {
+  const lab = candidate({
+    rank: 1,
+    title: "Acme opens new research lab in Austin",
+    url: "https://acme.test/news/austin-lab-2",
+    highlights: ["Acme opens new research lab in Austin."],
+  });
+  const cto = candidate({
+    rank: 2,
+    title: "Acme names new chief technology officer",
+    url: "https://acme.test/news/new-cto-2",
+    highlights: ["Acme names new chief technology officer."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([lab, cto]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [lab.url]: article({
+        title: lab.title,
+        body: "Acme, used by 50 million customers and growing 20 percent year over year, opened a new research lab in Austin, Texas, to expand its engineering capacity.",
+      }),
+      [cto.url]: article({
+        title: cto.title,
+        body: "Acme, used by 50 million customers and growing 20 percent year over year, named a new chief technology officer to lead its product and engineering organization.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // Both articles restate the same evergreen "50 million customers / 20
+  // percent growth" positioning language EARLY, well within the anchor scan
+  // window (unlike anti-overdedupe (E), which places its boilerplate past
+  // the bound). Neither title contains either figure, so neither event is
+  // actually "about" $50 million or 20 percent -- these are two genuinely
+  // different events (a lab opening and a CTO hire) that must stay distinct.
+  // This is the exact realistic gap independent review identified: shared
+  // quantity anchors alone, without any event-local corroboration, are not
+  // sufficient evidence of same-event coverage.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
+test("D3-correction anti-overdedupe (G): a currency quantity and an unrelated operational (non-currency) quantity of the same number are not conflated", async () => {
+  const funding = candidate({
+    rank: 1,
+    title: "Acme Raises $50 Million Series C At A 30 Percent Higher Valuation",
+    url: "https://acme.test/news/series-c-2",
+    highlights: ["Acme Raises $50 Million Series C At A 30 Percent Higher Valuation."],
+  });
+  const milestone = candidate({
+    rank: 2,
+    title: "Acme Surpasses 50 Million Users Milestone",
+    url: "https://acme.test/news/users-milestone",
+    highlights: ["Acme Surpasses 50 Million Users Milestone."],
+  });
+  const result = await verifyCompanyDiscovery(discovery([funding, milestone]), "test-key", {
+    now: NOW,
+    sourceFetchImpl: sourceMap({
+      [funding.url]: article({
+        title: funding.title,
+        body: "Acme raised $50 million in a Series C round at a 30 percent higher valuation than its prior round. The company said the funding will accelerate hiring and product development.",
+      }),
+      [milestone.url]: article({
+        title: milestone.title,
+        body: "Acme announced it has surpassed 50 million users, growing 30 percent year over year. The company said the milestone reflects strong product adoption.",
+      }),
+    }),
+    exaFetchImpl: async () => ({ ok: true, status: 200, json: async () => rawFallbackPayload([]) }),
+  });
+  // Both articles' evidence bodies mention "30 percent" (the funding round's
+  // higher valuation; the milestone's year-over-year growth), so "30:percent"
+  // is a genuinely shared anchor -- and it appears in the funding headline
+  // ("...At A 30 Percent Higher Valuation"), which alone is enough to
+  // satisfy the runtime's one-side headline-corroboration condition (the
+  // milestone headline, "Acme Surpasses 50 Million Users Milestone", does
+  // not need to contain it too). Without the currency-vs-count distinction,
+  // "$50 million" (a funding amount) and "50 million users" (an operational
+  // headcount) would ALSO normalize to the same "50:million" anchor, and
+  // that second shared anchor is what would wrongly lift this pair to the
+  // 2-anchor threshold and merge two unrelated events. Tagging money-scaled
+  // anchors as `:currency` or `:count` keeps "$50 million" and "50 million
+  // users" distinct, leaving only the shared, headline-corroborated percent
+  // anchor -- one anchor, below the threshold.
+  assert.equal(result.state, "insufficient_evidence");
+  assert.equal(result.evidence.length, 2);
+});
+
 test("B3R3: pipeline-level regression — real B3 flow accepts multiple valid first-party Notion candidates that say Notion but never Labs", async () => {
   const broad = [
     candidate({ rank: 1, title: "Introducing Notion's Developer Platform", url: "https://notion.com/blog/developer-platform", highlights: ["Introducing Notion's Developer Platform."] }),

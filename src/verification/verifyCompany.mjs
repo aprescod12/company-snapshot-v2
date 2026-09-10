@@ -285,12 +285,88 @@ function evidenceAsCandidate(verified) {
   };
 }
 
+// D3: the title-only duplicate heuristic in selectSignals.mjs only ever
+// compares distinctive title tokens (falling back to combined title+highlight
+// tokens for sparse/metadata-like titles). Two publishers covering the same
+// underlying event with substantially different headlines -- e.g. an
+// editorial-style headline versus a data-heavy financial headline -- share no
+// title vocabulary at all, so that check returns false without ever
+// consulting the verified evidence text. Because B3 has already fetched and
+// verified both pages, their full extracted article text is real,
+// publisher-derived content (unlike B2's raw discovery highlights), so it is
+// safe to use it here for one additional, narrow, deterministic check.
+//
+// Shared quantity anchors ("$99 million", "$2.5 billion", "177 percent" --
+// normalized (value, unit) pairs, with million/billion/thousand additionally
+// tagged as currency-scaled or plain count so "$50 million" and "50 million
+// users" are never conflated) are SUPPORTING EVIDENCE of same-event coverage,
+// never sufficient by themselves: two genuinely different announcements can
+// restate the same recycled evergreen metric (e.g. a boilerplate "trusted by
+// 50 million users, growing 20 percent year over year" line) early in their
+// lede, not just in a trailing "About the company" footer. So merging
+// requires BOTH (a) at least two shared exact anchors, bounded to a
+// 2,000-character lede prefix to focus comparison on event-local content
+// and reduce exposure to trailing boilerplate footers, AND (b) at
+// least one of those shared anchors also appearing in one side's own
+// extracted headline (`sourceTitle`) -- a conservative corroboration proxy
+// for the figure being central to the represented event, not proof of event
+// identity by itself. This intentionally favors precision over recall: a
+// genuine shared event fact (like Linear's tender/valuation figures, which
+// appear directly in one publisher's headline) satisfies it, but a genuine
+// same-event pair where neither publisher places the shared figure in its
+// own headline will not be caught by this mechanism -- a known, accepted
+// residual limitation. Anchors
+// are computed from the lede of the verified article text (title + a bounded
+// prefix of the body), not from `evidenceSnippet`, because
+// `sentenceForEvidence`'s naive sentence splitter treats an embedded decimal
+// point (e.g. "$2.5") as ending a sentence and can truncate a snippet before
+// a full figure appears -- that existing sentence-selection behavior is left
+// completely unchanged since other support-sentence-matching tests depend on
+// its exact truncation point. `eventQuantityAnchors`/`titleQuantityAnchors`
+// are internal-only fields: `assembleSnapshot()` never spreads the evidence
+// object, so neither can ever reach the public snapshot contract. This is a
+// generic company-agnostic pattern, not a Linear-specific rule, and it only
+// ever adds a new duplicate detection; it never weakens the existing
+// title-similarity check.
+const QUANTITY_ANCHOR_PATTERN = /(\$)?\s?(\d[\d,]*(?:\.\d+)?)\s*(percent|%|million|billion|thousand)(?!\w)/gi;
+const MINIMUM_SHARED_QUANTITY_ANCHORS = 2;
+const QUANTITY_ANCHOR_SCAN_CHAR_LIMIT = 2_000;
+
+function collectQuantityAnchors(text) {
+  const anchors = new Set();
+  for (const match of String(text ?? "").matchAll(QUANTITY_ANCHOR_PATTERN)) {
+    const value = Number(match[2].replace(/,/g, ""));
+    if (!Number.isFinite(value)) continue;
+    const unitWord = match[3].toLowerCase();
+    if (unitWord === "percent" || unitWord === "%") {
+      anchors.add(`${value}:percent`);
+      continue;
+    }
+    const scale = match[1] ? "currency" : "count";
+    anchors.add(`${value}:${unitWord}:${scale}`);
+  }
+  return anchors;
+}
+
+function shareStrongEventQuantityAnchors(left, right) {
+  const leftAnchors = new Set(left.eventQuantityAnchors ?? []);
+  if (leftAnchors.size === 0) return false;
+  const rightAnchors = new Set(right.eventQuantityAnchors ?? []);
+  const shared = [...leftAnchors].filter((anchor) => rightAnchors.has(anchor));
+  if (shared.length < MINIMUM_SHARED_QUANTITY_ANCHORS) return false;
+
+  const leftTitleAnchors = new Set(left.titleQuantityAnchors ?? []);
+  const rightTitleAnchors = new Set(right.titleQuantityAnchors ?? []);
+  return shared.some((anchor) => leftTitleAnchors.has(anchor) || rightTitleAnchors.has(anchor));
+}
+
 function isDuplicateEvidence(verified, accepted, companyName) {
   return accepted.some(
     (existing) =>
       existing.sourceUrl === verified.sourceUrl ||
       existing.resolvedUrl === verified.resolvedUrl ||
-      areDuplicateCandidates(evidenceAsCandidate(existing), evidenceAsCandidate(verified), companyName),
+      areDuplicateCandidates(evidenceAsCandidate(existing), evidenceAsCandidate(verified), companyName) ||
+      shareStrongEventQuantityAnchors(existing, verified),
   );
 }
 
@@ -351,6 +427,8 @@ export async function verifyCandidate(candidate, company, options = {}) {
       recencyBucket,
       sourceClass,
       evidenceSnippet: snippet,
+      eventQuantityAnchors: [...collectQuantityAnchors(fullText.slice(0, QUANTITY_ANCHOR_SCAN_CHAR_LIMIT))],
+      titleQuantityAnchors: [...collectQuantityAnchors(article.sourceTitle)],
     },
   }, diagnostic, options);
 }
