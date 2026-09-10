@@ -732,6 +732,24 @@ This is the first NVIDIA production-path run to reach `verified`; the earlier ow
 
 This directly validates B3R2's intended structural/date-extraction correction: the same static-content NVIDIA Newsroom page shape previously rejected at the `<article>`/`<main>` structural gate is now accepted through the chrome-stripped `<body>` fallback with strict date proof. It adds no discovery, Exa, or production-policy activity beyond the B3R2 implementation itself. B3 remains not production-approved; B4 and later work remain unstarted.
 
+The project owner subsequently approved **`B3 PRODUCTION EVIDENCE VERIFICATION — APPROVED`** based on the owner-run NVIDIA replay and MediaTek validation above. That approval is a current decision and does not revise the historical B3/B3R1/B3R2 records above.
+
+### B4A — pure deterministic snapshot assembly
+
+| Measure | Observed result |
+| --- | --- |
+| Scope | `src/snapshot/assembleSnapshot.mjs` is a pure adapter consuming a completed B3 verification result and a caller-supplied description; it performs zero network/Exa/publisher/model activity and does not import or invoke B1, B2, or B3. B1–B3 source files are unmodified. |
+| Verified mapping | Exactly three B3 evidence records map to exactly three signals, in B3's existing order. Each signal exposes only `title` (B3 `sourceTitle`), `publishedDate` (B3 `publishedDate`), `sourceUrl` (B3 `resolvedUrl`, not the original candidate/source URL), and `recencyBucket` (B3 `recencyBucket`); `evidenceSnippet`, `candidateTitle`, and `sourceClass` are never exposed. |
+| Insufficient-evidence mapping | 0–2 B3 evidence records map to that same partial count with no padding or fabrication. |
+| Validation | Fails fast (`TypeError`) on: unsupported verification state; `verified` with evidence.length !== 3; `insufficient_evidence` with evidence.length > 2; missing/empty company name or domain; missing/non-string description; a non-HTTP(S) resolved source URL; a missing evidence field. Neither the `verification` input nor its evidence array is mutated. |
+| Focused tests | `node --test test/assemble-snapshot.test.mjs` — 15/15 passed: verified assembly/order, publisher title/date/URL precedence over raw candidate values, no provenance leakage, zero/one/two-record insufficient-evidence cases, all invalid-contract rejections (including a missing required evidence field), and non-mutation of the B3 fixture. |
+| Full zero-network suite | `node --test test/*.test.mjs` — 176/176 passed (161 pre-existing + 15 new). |
+| Syntax / diff checks | `node --check src/snapshot/assembleSnapshot.mjs` and `git diff --check` passed. |
+| Provider accounting | B4A Exa requests: 0; publisher requests: 0; other network requests: 0; cumulative Exa experimental requests remain 22. |
+| Protected-path audit | `git diff --name-only` confirmed no file under `src/targeting/`, `src/discovery/`, `src/selection/`, or `src/verification/` was modified. |
+
+B4A accepts a future grounded description as an input only; generating that description is separately authorized future work as B4B, which has not begun. Endpoint/UI integration (B5) and Phase C have not begun. The noisy NVIDIA evidence-snippet issue recorded above remains an upstream known limitation; B4A does not expose `evidenceSnippet` and made no production-code change to address it.
+
 ## Phase C
 _Not yet run._
 
