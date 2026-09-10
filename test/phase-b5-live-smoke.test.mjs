@@ -374,3 +374,48 @@ test("17: redaction still strips the API key when a description rejection reason
   assert.equal(output.includes("super-secret-test-key"), false);
   assert.equal(output.includes("empty_summary"), true);
 });
+
+test("18: summarizeB5LiveSmoke preserves the real underlying B2 discovery clarification reason, not just the B5-mapped public reason", () => {
+  const captured = {
+    discovery: { state: "clarification_needed", reason: "insufficient_identity_evidence" },
+    verification: null,
+    description: null,
+  };
+  const counters = { broadExaSearchRequests: 1, fallbackExaSearchRequests: 0, publisherRequests: 0, exaContentsRequests: 0 };
+  const final = { state: "clarification_needed", reason: "company_ambiguous" };
+
+  const summary = summarizeB5LiveSmoke("notion.so", captured, counters, final, 500);
+
+  assert.equal(summary.final.reason, "company_ambiguous");
+  assert.equal(summary.discovery.state, "clarification_needed");
+  assert.equal(summary.discovery.reason, "insufficient_identity_evidence");
+});
+
+test("19: buildFailureDiagnostic preserves the real underlying B2 discovery clarification reason on a later-stage failure", () => {
+  const captured = {
+    discovery: { state: "clarification_needed", reason: "ambiguous_identity" },
+    verification: null,
+    description: null,
+  };
+  const counters = { broadExaSearchRequests: 1, fallbackExaSearchRequests: 0, publisherRequests: 0, exaContentsRequests: 0 };
+
+  const diagnostic = buildFailureDiagnostic("Craigslist", "discovery", captured, counters, 500, new Error("boom"));
+
+  assert.equal(diagnostic.discovery.state, "clarification_needed");
+  assert.equal(diagnostic.discovery.reason, "ambiguous_identity");
+});
+
+test("20: a resolved discovery result exposes its state with no reason key set to a stale clarification value", () => {
+  const captured = {
+    discovery: { state: "ready_for_verification", company: { companyName: "NVIDIA Corporation", officialDomain: "nvidia.com" } },
+    verification: null,
+    description: null,
+  };
+  const counters = { broadExaSearchRequests: 1, fallbackExaSearchRequests: 0, publisherRequests: 0, exaContentsRequests: 0 };
+  const final = { state: "snapshot", company: {}, signals: [] };
+
+  const summary = summarizeB5LiveSmoke("NVIDIA", captured, counters, final, 500);
+
+  assert.equal(summary.discovery.state, "ready_for_verification");
+  assert.equal(summary.discovery.reason, null);
+});

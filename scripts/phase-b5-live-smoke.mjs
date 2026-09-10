@@ -81,6 +81,9 @@ function deriveObserved(captured, counters) {
   const identity = captured.verification?.company ?? captured.discovery?.company ?? null;
   return {
     identity: identity ? { companyName: identity.companyName, officialDomain: identity.officialDomain } : {},
+    discovery: captured.discovery
+      ? { state: captured.discovery.state, reason: captured.discovery.reason ?? null }
+      : {},
     verification: captured.verification
       ? {
           state: captured.verification.state,
