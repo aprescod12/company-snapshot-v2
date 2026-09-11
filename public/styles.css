@@ -134,6 +134,20 @@ input {
   box-shadow: 0 2.2rem 5.5rem rgb(1 4 14 / 55%), 0 0 0 1px rgb(247 174 122 / 4%), inset 0 1px 0 rgb(255 240 223 / 8%);
 }
 
+.brand-mark {
+  position: absolute;
+  top: clamp(1.25rem, 4vw, 2.25rem);
+  right: clamp(1.25rem, 4vw, 2.25rem);
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 1.1rem;
+  opacity: 0.92;
+  filter: saturate(1.35) contrast(1.08);
+  box-shadow: 0 0.5rem 1.5rem rgb(1 4 14 / 45%);
+  pointer-events: none;
+  user-select: none;
+}
+
 .intro {
   max-width: 43rem;
 }
@@ -469,6 +483,10 @@ h1 {
   .shard-two,
   .shard-four,
   .shard-six {
+    display: none;
+  }
+
+  .brand-mark {
     display: none;
   }
 
